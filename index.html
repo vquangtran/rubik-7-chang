@@ -220,6 +220,18 @@ p { margin: 0; }
 .lays { display: flex; flex-direction: column; gap: 6px; }
 .layrow { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 5px; font-size: 13px; }
 .layrow b { font-family: var(--font-display); font-size: 15px; margin-right: 2px; }
+/* lời hướng dẫn là lời nói: mỗi lần một bong bóng, một ý */
+.say { display: flex; gap: 8px; align-items: flex-start; }
+.ava { position: relative; flex: 0 0 38px; height: 38px; margin-top: 2px; border-radius: 12px; border: 2.5px solid #12141a; background: radial-gradient(circle at 31% 42%, #12141a 0 3px, transparent 3.6px), radial-gradient(circle at 69% 42%, #12141a 0 3px, transparent 3.6px), var(--c-yellow); }
+.ava::after { content: ""; position: absolute; left: 50%; top: 56%; width: 12px; height: 6px; margin-left: -8.5px; border: 2.5px solid #12141a; border-top: 0; border-radius: 0 0 12px 12px; }
+.bub { flex: 1; min-width: 0; background: var(--surface); border: 2px solid var(--ink); border-radius: 4px 16px 16px 16px; padding: 9px 12px 10px; display: flex; flex-direction: column; gap: 7px; align-items: flex-start; }
+.bub .bt { font-size: 18px; font-weight: 500; line-height: 1.4; }
+.bub .bw { font-size: 15.5px; line-height: 1.4; border-radius: 10px; padding: 6px 10px; background: color-mix(in srgb, var(--c-yellow) 24%, var(--surface)); }
+.askwhy, .hear { border: 0; border-radius: 999px; padding: 5px 13px; font-size: 14px; font-weight: 600; background: color-mix(in srgb, var(--c-yellow) 45%, var(--surface)); color: var(--ink); }
+.hear { background: color-mix(in srgb, var(--accent) 16%, var(--surface)); }
+.brow { display: flex; flex-wrap: wrap; gap: 6px; }
+.oops { font-size: 15px; line-height: 1.4; font-weight: 500; border: 1.5px solid var(--c-orange); background: color-mix(in srgb, var(--c-orange) 13%, transparent); border-radius: 10px; padding: 6px 10px; }
+.mission { font-family: var(--font-display); font-size: 17px; font-weight: 700; line-height: 1.2; }
 .blockbox { position: sticky; top: 0; z-index: 2; font-size: 14px; line-height: 1.4; border: 1.5px solid var(--c-orange); background: color-mix(in srgb, var(--c-orange) 14%, var(--coachbg)); border-radius: 10px; padding: 7px 10px; }
 .blockbox b.h { display: block; font-family: var(--font-display); font-size: 16px; }
 .segs .oops { display: block; margin-top: 6px; font-size: 14px; font-weight: 500; color: var(--ink); border: 1.5px solid var(--c-orange); background: color-mix(in srgb, var(--c-orange) 13%, transparent); border-radius: 10px; padding: 6px 10px; }
@@ -316,7 +328,7 @@ p { margin: 0; }
 <div id="home">
   <header class="masthead">
     <h1>Rubik <span>7 chặng</span></h1>
-    <p class="lede">Xếp từng tầng, từ dưới lên. Bước nào cũng biết vì sao.</p>
+    <p class="lede">Xếp rubik như xây nhà: từng tầng, từ dưới lên.</p>
   </header>
 
   <button class="next" id="next" type="button"></button>
@@ -360,6 +372,7 @@ p { margin: 0; }
     <button class="back" id="back" type="button" aria-label="Về bảng chặng">‹ Bảng</button>
     <div class="ttl" id="ttl"></div>
     <div class="stat" id="stat"></div>
+    <button class="snd" id="voice" type="button" aria-pressed="false" aria-label="Đọc to lời hướng dẫn" title="Đọc to lời hướng dẫn" hidden>🗣</button>
     <button class="snd" id="snd" type="button" aria-pressed="true" aria-label="Âm thanh và rung" title="Âm thanh và rung">🔊</button>
   </header>
   <nav class="tabs" id="tabs" role="tablist" aria-label="Ba việc của chặng"></nav>
@@ -502,7 +515,7 @@ var Core = (function () {
     for (var k = 0; k < opts.length; k++) { var t = run(s, opts[k]); if (pred(t)) return { mv: opts[k], s: t }; }
     return null;
   }
-  // t: việc cần làm (ngắn). x.n: lời giải thích thêm. x.g: xong bước này thì được gì. x.w: vì sao làm vậy. x.m: chỗ cần khoanh vòng tròn ('UFR' = một chỗ, 'UF:U' = một ô). x.h: mặt cần nhìn.
+  // t: lời nói cho bước này (ngắn, như nói với con). x.g: lời reo khi làm xong. x.w: lý do, chỉ hiện khi con bấm "Vì sao thế?". x.m: chỗ cần khoanh vòng tròn ('UFR' = một chỗ, 'UF:U' = một ô). x.h: mặt cần nhìn.
   function seg(t, moves, f, reps, x) {
     if (f && typeof f === 'object') { x = f; f = null; }
     x = x || {};
@@ -523,7 +536,6 @@ var Core = (function () {
       return { i: i, w: w, petal: s.p[i][1] === 1 && w[1] === 1, done: ok(s, i) };
     });
     var pending = info.filter(function (e) { return !e.done && !e.petal; });
-    var NUA = 'Xoay 2 lần là lật nửa vòng.', NHIN = 'Để dễ nhìn. Không viên nào đổi chỗ.';
     if (pending.length === 0) {
       // thả từng cánh hoa xuống
       var cands = [];
@@ -535,9 +547,9 @@ var Core = (function () {
             var i = t.at[key(P(slot))];
             var yy = firstOpt(t, YOPT, function (q) { return veq(q.p[i], [0, 1, 1]); });
             cands.push(mk(1, 'c1-drop', 'Thả cánh hoa xuống đáy', [
-              seg('Xoay tầng trên.', u, { g: 'Cánh hoa viền hồng khớp màu.', w: 'Khớp rồi mới thả thì xuống đáy là đúng luôn.' }),
-              seg('Xoay cả khối.', yy.mv, { h: 'F', g: 'Cánh hoa viền hồng về mặt trước.', w: NHIN }),
-              seg('Xoay mặt trước 2 lần.', ['F', 'F'], { g: 'Cánh hoa xuống đáy, đúng chỗ.', w: NUA })
+              seg('Xoay tầng trên nào. Dừng khi cánh hoa viền hồng gặp ô giữa cùng màu.', u, { g: 'Gặp đúng màu rồi!', w: 'Cùng màu thì thả xuống là trúng nhà ngay.' }),
+              seg('Xoay cả khối. Đưa cánh hoa về mặt trước nhé.', yy.mv, { h: 'F', g: 'Cánh hoa ở ngay trước mặt con.', w: 'Xoay cả khối chỉ để nhìn cho rõ. Không bạn nào đổi chỗ đâu.' }),
+              seg('Xoay mặt trước 2 lần.', ['F', 'F'], { g: 'Cánh hoa rơi xuống đáy, trúng nhà!', w: 'Xoay 2 lần là lộn nửa vòng. Đang ở trên thì xuống dưới.' })
             ], [i]));
           }
         });
@@ -548,20 +560,20 @@ var Core = (function () {
       var i = e.i, segs = [], t, id;
       function freeU(st, slot) {
         var o = firstOpt(st, UOPT, function (q) { return !petalAt(q, slot); });
-        segs.push(seg('Dọn chỗ: xoay tầng trên.', o.mv, { g: 'Ô có vòng tròn hết màu trắng.', w: 'Nước xoay sau sẽ đẩy viên ở ô đó đi.', m: [slot + ':U'] }));
+        segs.push(seg('Dọn chỗ đã: xoay tầng trên. Dừng khi ô có vòng tròn hết trắng.', o.mv, { g: 'Chỗ trống rồi.', w: 'Không dọn thì cánh hoa cũ bị đẩy đi mất. Tiếc lắm!', m: [slot + ':U'] }));
         return o.s;
       }
-      function up(col, mv) { segs.push(seg('Đẩy cột ' + col + ' lên.', [mv], { g: 'Ô trắng lên mặt trên.', w: 'Ô trắng nằm ở cột ' + col + ' nên lên theo.' })); }
-      function side(col) { segs.push(seg('Xoay mặt trước ↻ 1 lần.', ['F'], { g: 'Ô trắng sang cột ' + col + '.', w: 'Ở giữa thì chưa cột nào chở lên được.' })); }
+      function up(col, mv) { segs.push(seg('Đẩy cột ' + col + ' lên nào.', [mv], { g: 'Thêm một cánh hoa!', w: 'Ô trắng ngồi ở cột ' + col + '. Cột đi lên thì bạn ấy lên theo.' })); }
+      function side(col) { segs.push(seg('Xoay mặt trước ↻ một lần.', ['F'], { g: 'Ô trắng sang cột ' + col + ' rồi.', w: 'Đứng ở giữa thì chẳng cột nào chở lên được.' })); }
       if (e.w[1] === -1) {
         var yy = firstOpt(s, YOPT, function (q) { return veq(q.p[i], [0, -1, 1]); });
-        segs.push(seg('Xoay cả khối.', yy.mv, { g: 'Viên viền hồng về mặt trước.', w: 'Ô trắng của nó ở đáy nhưng sai mặt.', h: 'F' }));
+        segs.push(seg('Xoay cả khối. Đưa bạn hồng về mặt trước.', yy.mv, { g: 'Bạn hồng ở trước mặt con rồi.', w: 'Bạn này nằm ở đáy nhưng vào nhầm nhà. Mình đón lên làm lại.', h: 'F' }));
         t = freeU(yy.s, 'UF');
-        segs.push(seg('Xoay mặt trước 2 lần.', ['F', 'F'], { g: 'Ô trắng lên mặt trên.', w: NUA }));
+        segs.push(seg('Xoay mặt trước 2 lần.', ['F', 'F'], { g: 'Ô trắng lên mặt trên rồi!', w: 'Xoay 2 lần là lộn nửa vòng. Đang ở dưới thì lên trên.' }));
         id = 'c1-d';
       } else {
         var y2 = firstOpt(s, YOPT, function (q) { return mvec(q.m[i], [0, -1, 0])[2] === 1; });
-        segs.push(seg('Xoay cả khối.', y2.mv, { h: 'F', g: 'Ô trắng viền hồng về mặt trước.', w: NHIN }));
+        segs.push(seg('Xoay cả khối. Đưa ô trắng viền hồng về mặt trước.', y2.mv, { h: 'F', g: 'Ô trắng ở trước mặt con rồi.', w: 'Nhìn thẳng thì biết nên đẩy bạn ấy lên bằng cột nào.' }));
         t = y2.s;
         var p = t.p[i];
         if (p[0] === 1) {
@@ -596,33 +608,34 @@ var Core = (function () {
   function planCorners(s) {
     var un = G.wCorners.filter(function (i) { return !ok(s, i); });
     var top = un.filter(function (i) { return s.p[i][1] === 1; });
-    var f1 = FORMULAS.f1.moves, VAO = 'Viên góc viền hồng vào vòng tròn.';
+    var f1 = FORMULAS.f1.moves;
     if (top.length) {
       return best(top.map(function (i) {
         var yy = firstOpt(s, YOPT, function (q) { return veq(mvec(q.g, HOMES[i]), [1, -1, 1]); });
         var uu = firstOpt(yy.s, UOPT, function (q) { return veq(q.p[i], [1, 1, 1]); });
         var t = uu.s, n = 0;
         while (!ok(t, i) && n < 6) { apply(t, f1); n++; }
-        return mk(2, 'c2-top', 'Đưa viên góc trắng xuống đáy', [
-          seg('Xoay cả khối.', yy.mv, { g: 'Hai ô giữa có vòng tròn giống 2 màu của viên góc.', w: 'Hai màu đó cho biết chỗ của viên góc.', m: ['F:F', 'R:R'] }),
-          seg('Xoay tầng trên.', uu.mv, { g: VAO, w: 'Đó là ngay trên chỗ của nó.', m: ['UFR'] }),
-          seg('Làm Thang máy ' + n + ' lần.', rep(f1, n), 'f1', n, { g: 'Viên góc xuống đáy, ô trắng úp xuống.', w: 'Mỗi lần, viên góc đổi tầng và xoay một kiểu.' })
+        return mk(2, 'c2-top', 'Đưa bạn góc trắng về nhà', [
+          seg('Xoay cả khối. Dừng khi 2 ô giữa có vòng tròn giống 2 màu của bạn góc.', yy.mv, { g: 'Tìm ra nhà của bạn góc rồi!', w: 'Hai màu bên chính là địa chỉ nhà của bạn góc.', m: ['F:F', 'R:R'] }),
+          seg('Xoay tầng trên. Đưa bạn góc vào vòng tròn.', uu.mv, { g: 'Bạn góc đứng ngay trên nóc nhà mình.', w: 'Thang máy đón khách ở đúng chỗ này.', m: ['UFR'] }),
+          seg('Làm chiêu Thang máy ' + n + ' lần.', rep(f1, n), 'f1', n, { g: 'Bạn góc về nhà rồi!', w: 'Mỗi lần đi thang máy, bạn góc xoay người một kiểu. Lần này đi ' + n + ' lần mới nằm đúng.' })
         ], [i]);
       }));
     }
     return best(un.map(function (i) {
       var yy = firstOpt(s, YOPT, function (q) { return veq(q.p[i], [1, -1, 1]); });
+      var first = seg('Xoay cả khối. Đưa bạn góc hồng vào vòng tròn.', yy.mv, { g: 'Vào vòng tròn rồi.', w: 'Thang máy chỉ chạy ở góc này thôi.', m: ['DFR'] });
       if (inPlace(s, i)) {
         var t = clone(yy.s), n = 0;
         while (!ok(t, i) && n < 6) { apply(t, f1); n++; }
-        return mk(2, 'c2-twist', 'Xoay viên góc cho ô trắng úp xuống', [
-          seg('Xoay cả khối.', yy.mv, { g: VAO, w: 'Thang máy chỉ làm ở góc này.', m: ['DFR'] }),
-          seg('Làm Thang máy ' + n + ' lần.', rep(f1, n), 'f1', n, { g: 'Ô trắng úp xuống đáy.', w: 'Mỗi lần, viên góc xoay một kiểu.' })
+        return mk(2, 'c2-twist', 'Giúp bạn góc trở mình', [
+          first,
+          seg('Làm chiêu Thang máy ' + n + ' lần.', rep(f1, n), 'f1', n, { g: 'Ô trắng úp xuống đáy rồi!', w: 'Bạn ấy về đúng nhà nhưng nằm ngược. Đi thang máy cho bạn ấy trở mình.' })
         ], [i]);
       }
-      return mk(2, 'c2-wrong', 'Lấy viên góc nằm sai chỗ ra', [
-        seg('Xoay cả khối.', yy.mv, { g: VAO, w: 'Thang máy chỉ làm ở góc này.', m: ['DFR'] }),
-        seg('Làm Thang máy 1 lần.', f1, 'f1', 1, { g: 'Viên góc lên tầng trên.', w: 'Nó nằm nhầm chỗ. Phải lấy ra trước.' })
+      return mk(2, 'c2-wrong', 'Mời bạn góc ra khỏi nhà người khác', [
+        first,
+        seg('Làm chiêu Thang máy 1 lần.', f1, 'f1', 1, { g: 'Bạn góc lên tầng trên rồi.', w: 'Bạn ấy vào nhầm nhà. Mời ra đã, lát đưa về sau.' })
       ], [i]);
     }));
   }
@@ -638,21 +651,19 @@ var Core = (function () {
         function topHome(q) { return mvec(q.m[i], a)[1] === 1 ? a : b; }
         var uu = firstOpt(s, UOPT, function (q) { var hs = sideHome(q); return veq(mvec(q.m[i], hs), mvec(q.g, hs)); });
         var yy = firstOpt(uu.s, YOPT, function (q) { return veq(q.p[i], [0, 1, 1]); });
-        var right = mvec(yy.s.g, topHome(yy.s))[0] === 1;
-        return mk(3, right ? 'c3-right' : 'c3-left', 'Đưa một viên cạnh vào tầng giữa', [
-          seg('Xoay tầng trên.', uu.mv, { g: 'Viên viền hồng khớp màu: thành vạch dọc.', w: 'Vạch dọc: nó đứng ngay trên mặt của nó.' }),
-          seg('Xoay cả khối.', yy.mv, { h: 'F', g: 'Vạch dọc về mặt trước.', w: 'Công thức Gửi làm từ mặt trước.' }),
-          right
-            ? seg('Làm Gửi sang phải.', FORMULAS.f3r.moves, 'f3r', 1, { g: 'Viên cạnh vào tầng giữa.', w: 'Sang phải: màu trên của nó giống ô giữa mặt phải.' })
-            : seg('Làm Gửi sang trái.', FORMULAS.f3l.moves, 'f3l', 1, { g: 'Viên cạnh vào tầng giữa.', w: 'Sang trái: màu trên của nó giống ô giữa mặt trái.' })
+        var right = mvec(yy.s.g, topHome(yy.s))[0] === 1, ben = right ? 'phải' : 'trái';
+        return mk(3, right ? 'c3-right' : 'c3-left', 'Gửi bạn cạnh vào tầng giữa', [
+          seg('Xoay tầng trên. Dừng khi bạn hồng thành một vạch dọc.', uu.mv, { g: 'Vạch dọc đây rồi!', w: 'Có vạch dọc là bạn ấy đứng đúng trên mặt của mình.' }),
+          seg('Xoay cả khối. Đưa vạch dọc về mặt trước.', yy.mv, { h: 'F', g: 'Vạch dọc ở trước mặt con.', w: 'Chiêu Gửi làm từ mặt trước.' }),
+          seg('Làm chiêu Gửi sang ' + ben + '.', right ? FORMULAS.f3r.moves : FORMULAS.f3l.moves, right ? 'f3r' : 'f3l', 1, { g: 'Bạn cạnh vào tầng giữa rồi!', w: 'Màu trên đầu bạn ấy giống ô giữa bên ' + ben + '. Vậy nhà bạn ấy ở bên ' + ben + '.' })
         ], [i]);
       }));
     }
     return best(un.map(function (i) {
       var yy = firstOpt(s, YOPT, function (q) { return veq(q.p[i], [1, 0, 1]); });
-      return mk(3, 'c3-stuck', 'Lấy viên cạnh kẹt ra', [
-        seg('Xoay cả khối.', yy.mv, { g: 'Viên viền hồng vào vòng tròn.', w: 'Gửi sang phải làm ở chỗ này.', m: ['FR'] }),
-        seg('Làm Gửi sang phải 1 lần.', FORMULAS.f3r.moves, 'f3r', 1, { g: 'Viên kẹt lên tầng trên.', w: 'Viên khác vào thay, viên kẹt bị đẩy ra.' })
+      return mk(3, 'c3-stuck', 'Mời bạn cạnh bị kẹt ra', [
+        seg('Xoay cả khối. Đưa bạn hồng vào vòng tròn.', yy.mv, { g: 'Vào vòng tròn rồi.', w: 'Chiêu Gửi sang phải làm ở chỗ này.', m: ['FR'] }),
+        seg('Làm chiêu Gửi sang phải 1 lần.', FORMULAS.f3r.moves, 'f3r', 1, { g: 'Bạn bị kẹt lên tầng trên rồi.', w: 'Gửi bạn khác vào thì bạn kẹt phải nhường chỗ.' })
       ], [i]);
     }));
   }
@@ -661,16 +672,16 @@ var Core = (function () {
   function planYCross(s) {
     function up(q, X) { return colorAt(q, P('U' + X), V.U) === 'Y'; }
     var n = SIDES.filter(function (X) { return up(s, X); }).length;
-    var f = FORMULAS.f4.moves, fs = function (g) { return seg('Làm công thức Chữ thập vàng.', f, 'f4', 1, { g: g, w: 'Mỗi lần làm, hình vàng tiến một nấc.' }); };
-    if (n === 0) return mk(4, 'c4-dot', 'Chấm vàng thành chữ L', [fs('Mặt trên có chữ L vàng.')]);
+    var f = FORMULAS.f4.moves, fs = function (g) { return seg('Làm chiêu Chữ thập vàng.', f, 'f4', 1, { g: g, w: 'Mỗi lần làm, hình vàng lớn thêm một nấc: chấm, chữ L, vạch, chữ thập.' }); };
+    if (n === 0) return mk(4, 'c4-dot', 'Chấm vàng thành chữ L', [fs('Chấm thành chữ L rồi!')]);
     var ups = G.yEdges.filter(function (i) { return yUp(s, i); });
     if (n === 2) {
       if ((up(s, 'F') && up(s, 'B')) || (up(s, 'L') && up(s, 'R'))) {
         var o = firstOpt(s, UOPT, function (q) { return up(q, 'L') && up(q, 'R'); });
-        return mk(4, 'c4-line', 'Vạch vàng thành chữ thập', [seg('Xoay tầng trên.', o.mv, { g: 'Vạch vàng nằm ngang.', w: 'Công thức chỉ lật đúng khi vạch nằm ngang.', m: ['UL:U', 'UR:U'] }), fs('Mặt trên có chữ thập vàng.')], ups);
+        return mk(4, 'c4-line', 'Vạch vàng thành chữ thập', [seg('Xoay tầng trên. Cho vạch vàng nằm ngang.', o.mv, { g: 'Vạch nằm ngang rồi.', w: 'Chiêu này chỉ lật đúng khi vạch nằm ngang.', m: ['UL:U', 'UR:U'] }), fs('Chữ thập vàng đây rồi!')], ups);
       }
       var o2 = firstOpt(s, UOPT, function (q) { return up(q, 'B') && up(q, 'L'); });
-      return mk(4, 'c4-L', 'Chữ L thành vạch vàng', [seg('Xoay tầng trên.', o2.mv, { g: 'Hai viên viền hồng vào 2 vòng tròn.', w: 'Công thức chỉ lật đúng khi chữ L ở góc này.', m: ['UB:U', 'UL:U'] }), fs('Mặt trên có vạch vàng.')], ups);
+      return mk(4, 'c4-L', 'Chữ L thành vạch vàng', [seg('Xoay tầng trên. Đưa 2 bạn hồng vào 2 vòng tròn.', o2.mv, { g: 'Chữ L nằm đúng góc rồi.', w: 'Chiêu này chỉ lật đúng khi chữ L nằm ở góc đó.', m: ['UB:U', 'UL:U'] }), fs('Chữ L thành vạch rồi!')], ups);
     }
     return null;
   }
@@ -679,25 +690,25 @@ var Core = (function () {
   function matches(q) { return SIDES.filter(function (X) { return colorAt(q, P('U' + X), V[X]) === centerColor(q, V[X]); }); }
   function planYEdges(s) {
     var four = firstOpt(s, UOPT, function (q) { return matches(q).length === 4; });
-    if (four) return mk(5, 'c5-turn', 'Chỉ cần xoay tầng trên', [seg('Xoay tầng trên.', four.mv, { g: 'Cả 4 viên cạnh vàng khớp màu.', w: 'Chúng đã đúng thứ tự, chỉ đang lệch.' })]);
+    if (four) return mk(5, 'c5-turn', 'Chỉ cần xoay tầng trên', [seg('Xoay tầng trên. Dừng khi cả 4 bạn cạnh vàng khớp màu.', four.mv, { g: 'Khớp cả 4 rồi!', w: 'Các bạn đứng đúng thứ tự rồi, chỉ lệch một tí.' })]);
     var f = FORMULAS.f5.moves;
     function adjacent(m) { return !((m[0] === 'F' && m[1] === 'B') || (m[0] === 'R' && m[1] === 'L')); }
     function pair(q) { return matches(q).map(function (X) { return q.at[key(P('U' + X))]; }); }
-    function first(mv) { return seg('Xoay tầng trên.', mv, { g: 'Hai viên viền hồng khớp màu.', w: 'Hai viên khớp là mốc. Chỉ sửa 2 viên kia.' }); }
+    function first(mv) { return seg('Xoay tầng trên. Dừng khi 2 bạn hồng khớp màu.', mv, { g: 'Hai bạn khớp màu rồi.', w: 'Hai bạn này xong rồi. Mình chỉ lo 2 bạn kia.' }); }
     var adj = firstOpt(s, UOPT, function (q) { var m = matches(q); return m.length === 2 && adjacent(m); });
     if (adj) {
       var yy = firstOpt(adj.s, YOPT, function (q) { var m = matches(q); return m.indexOf('B') >= 0 && m.indexOf('R') >= 0; });
-      return mk(5, 'c5-adj', 'Đổi chỗ 2 viên cạnh chưa khớp', [
+      return mk(5, 'c5-adj', 'Đổi chỗ 2 bạn cạnh chưa khớp', [
         first(adj.mv),
-        seg('Xoay cả khối.', yy.mv, { g: 'Hai viên viền hồng vào 2 vòng tròn.', w: 'Ở đó chúng được công thức giữ nguyên.', m: ['UB', 'UR'] }),
-        seg('Làm công thức Đổi cạnh.', f, 'f5', 1, { g: 'Hai viên chưa khớp đổi chỗ.', w: 'Công thức chỉ đổi 2 viên đó.' })
+        seg('Xoay cả khối. Đưa 2 bạn hồng vào 2 vòng tròn.', yy.mv, { g: 'Hai bạn ngồi vào chỗ an toàn.', w: 'Ngồi ở đó thì chiêu Đổi cạnh không đụng tới.', m: ['UB', 'UR'] }),
+        seg('Làm chiêu Đổi cạnh.', f, 'f5', 1, { g: 'Hai bạn kia đổi chỗ cho nhau rồi!', w: 'Chiêu này chỉ đổi chỗ 2 bạn chưa khớp.' })
       ], pair(adj.s));
     }
     var opp = firstOpt(s, UOPT, function (q) { return matches(q).length === 2; });
     if (!opp) return null;
-    return mk(5, 'c5-opp', 'Hai viên khớp nằm đối diện', [
+    return mk(5, 'c5-opp', 'Hai bạn khớp ngồi đối diện', [
       first(opp.mv),
-      seg('Làm Đổi cạnh 1 lần.', f, 'f5', 1, { g: 'Hai viên khớp thành nằm cạnh nhau.', w: 'Nằm đối diện thì chưa sửa ngay được.' })
+      seg('Làm chiêu Đổi cạnh 1 lần.', f, 'f5', 1, { g: 'Hai bạn khớp màu ngồi cạnh nhau rồi.', w: 'Ngồi đối diện thì chưa sửa ngay được.' })
     ], pair(opp.s));
   }
 
@@ -708,12 +719,12 @@ var Core = (function () {
     if (good.length >= 1 && good.length < 4) {
       var i = good[0];
       var yy = firstOpt(s, YOPT, function (q) { return veq(q.p[i], [1, 1, 1]); });
-      return mk(6, 'c6-one', 'Giữ 1 viên góc, đổi 3 viên kia', [
-        seg('Xoay cả khối.', yy.mv, { g: 'Viên góc viền hồng vào vòng tròn.', w: 'Viên này đã đúng chỗ. Đổi góc giữ yên góc này.', m: ['UFR'] }),
-        seg('Làm công thức Đổi góc.', f, 'f6', 1, { g: 'Ba viên góc kia đổi chỗ.', w: 'Chưa đúng thì thêm 1 lần là đúng.' })
+      return mk(6, 'c6-one', 'Một bạn ngồi yên, ba bạn đổi ghế', [
+        seg('Xoay cả khối. Đưa bạn góc hồng vào vòng tròn.', yy.mv, { g: 'Bạn ấy sẽ ngồi yên ở đây.', w: 'Bạn này về đúng nhà rồi. Chiêu Đổi góc không đụng tới góc này.', m: ['UFR'] }),
+        seg('Làm chiêu Đổi góc.', f, 'f6', 1, { g: 'Ba bạn góc kia đổi ghế một vòng.', w: 'Ba bạn đổi ghế theo vòng tròn. Chưa đúng thì đổi thêm một vòng nữa.' })
       ], [i]);
     }
-    return mk(6, 'c6-none', 'Tạo 1 viên góc đúng chỗ', [seg('Làm Đổi góc 1 lần.', f, 'f6', 1, { g: 'Có 1 viên góc đúng chỗ.', w: 'Cần 1 viên đúng chỗ để làm mốc.' })]);
+    return mk(6, 'c6-none', 'Tìm một bạn góc làm mốc', [seg('Làm chiêu Đổi góc 1 lần.', f, 'f6', 1, { g: 'Có một bạn góc về đúng nhà rồi.', w: 'Phải có một bạn ngồi yên làm mốc đã.' })]);
   }
 
   // ---------- chặng 7: xoay góc vàng ----------
@@ -737,27 +748,27 @@ var Core = (function () {
   function ufrUp(q) { return colorAt(q, [1, 1, 1], V.U) === 'Y'; }
   function allUp(q) { return ['UFR', 'UFL', 'UBR', 'UBL'].every(function (c) { return colorAt(q, P(c), V.U) === 'Y'; }); }
   function plan7(s, det) {
-    var f = FORMULAS.f7.moves, segs = [], t = clone(s), title = 'Xoay viên góc cho ô vàng ngửa lên';
+    var f = FORMULAS.f7.moves, segs = [], t = clone(s), title = 'Giúp bạn góc ngửa mặt vàng lên';
     if (det.p > 0) {
       var restMoves = f.slice(det.p);
-      segs.push(seg('Làm nốt Thang máy ngược.', restMoves, 'f7', 0, { g: 'Công thức được làm trọn.', w: 'Dừng giữa chừng thì tầng dưới không về chỗ.' }));
+      segs.push(seg('Làm nốt chiêu Thang máy ngược.', restMoves, 'f7', 0, { g: 'Làm trọn chiêu rồi.', w: 'Bỏ dở giữa chừng thì tầng dưới không gọn lại được.' }));
       apply(t, restMoves);
     }
     if (!ufrUp(t)) {
       var n = 0;
       while (!ufrUp(t) && n < 6) { apply(t, f); n++; }
-      segs.push(seg('Làm Thang máy ngược ' + n + ' lần.', rep(f, n), 'f7', n, { g: 'Ô vàng của viên viền hồng ngửa lên.', w: 'Tầng dưới lộn xộn là mượn tạm. Cuối cùng sẽ trả về.' }));
+      segs.push(seg('Làm chiêu Thang máy ngược ' + n + ' lần.', rep(f, n), 'f7', n, { g: 'Ô vàng của bạn hồng ngửa lên rồi!', w: 'Tầng dưới đang bừa như bàn học cuối tuần. Kệ nó con ạ. Xong bạn góc cuối là tự gọn.' }));
       return mk(7, 'c7-twist', title, segs, [s.at[key([1, 1, 1])]]);
     }
     if (segs.length) return mk(7, 'c7-twist', title, segs);
     if (allUp(t)) {
       var a = firstOpt(t, UOPT, solved);
       if (!a) return null;
-      return mk(7, 'c7-align', 'Bước cuối cùng', [seg('Xoay tầng trên.', a.mv, { g: 'Xong cả khối!', w: 'Tầng trên đã đúng, chỉ đang lệch.' })]);
+      return mk(7, 'c7-align', 'Bước cuối cùng', [seg('Xoay tầng trên lần cuối nào.', a.mv, { g: 'Xong cả khối rồi!', w: 'Tầng trên đúng hết rồi, chỉ lệch một tí.' })]);
     }
     var o = firstOpt(t, [['U'], ["U'"], ['U', 'U']], function (q) { return !ufrUp(q); });
-    return mk(7, 'c7-next', 'Sang viên góc tiếp theo', [
-      seg('Xoay tầng trên.', o.mv, { g: 'Viên góc viền hồng vào vòng tròn.', w: 'Không xoay cả khối: phần mượn tạm phải giữ nguyên.', m: ['UFR'] })
+    return mk(7, 'c7-next', 'Sang bạn góc tiếp theo', [
+      seg('Xoay tầng trên. Đưa bạn góc hồng vào vòng tròn. Đừng xoay cả khối nhé.', o.mv, { g: 'Bạn tiếp theo vào chỗ rồi.', w: 'Xoay cả khối thì tầng dưới không gọn lại được nữa.', m: ['UFR'] })
     ], [o.s.at[key([1, 1, 1])]]);
   }
 
@@ -866,35 +877,25 @@ var Core = (function () {
     ['L', '↓', 'Trái', 'Cột trái đi xuống'], ["L'", '↑', 'Trái', 'Cột trái đi lên'],
     ['y', '⇐', 'Cả khối', 'Xoay cả khối sang trái'], ["y'", '⇒', 'Cả khối', 'Xoay cả khối sang phải']
   ];
-  // steps: mỗi bước chỉ một việc. Bước nào gộp 2 việc thì tách ra.
   var STAGES = [null,
-    { name: 'Chữ thập trắng', goal: 'Mặt đáy có chữ thập trắng. Màu ở 4 mặt bên khớp ô giữa.',
-      steps: ['Tìm một viên cạnh có ô trắng.', 'Xoay cả khối.', 'Đẩy ô trắng lên mặt trên.', 'Làm đủ 4 cánh hoa.', 'Xoay tầng trên.', 'Xoay mặt đó 2 lần.', 'Thả đủ 4 cánh hoa.'],
-      ifs: [],
+    { name: 'Chữ thập trắng', goal: 'Đáy khối có chữ thập trắng. Màu ở 4 mặt bên khớp với ô giữa.', ifs: [],
       cases: [['c1-fr', 'Ô trắng bên phải'], ['c1-fl', 'Ô trắng bên trái'], ['c1-uf', 'Ô trắng ở trên'], ['c1-df', 'Ô trắng ở dưới'], ['c1-d', 'Ô trắng quay xuống đáy'], ['c1-drop', 'Thả cánh hoa']], f: [] },
-    { name: 'Góc trắng', goal: 'Cả mặt đáy màu trắng. Hàng dưới của 4 mặt bên đúng màu.',
-      steps: ['Tìm viên góc trắng ở tầng trên.', 'Xoay cả khối.', 'Xoay tầng trên.', 'Làm Thang máy.', 'Ô trắng chưa úp xuống? Làm thêm 2 lần.', 'Làm đủ 4 viên góc.'],
-      ifs: ['Viên góc trắng kẹt ở tầng dưới? Làm Thang máy 1 lần để lấy nó ra.'],
-      cases: [['c2-top', 'Góc trắng ở tầng trên'], ['c2-wrong', 'Góc trắng nằm sai chỗ'], ['c2-twist', 'Góc trắng bị xoay lệch']], f: ['f1'] },
+    { name: 'Góc trắng', goal: 'Cả đáy màu trắng. Hàng dưới của 4 mặt bên đúng màu.',
+      ifs: ['Bạn góc trắng kẹt ở tầng dưới? Làm Thang máy 1 lần để mời bạn ấy ra.'],
+      cases: [['c2-top', 'Góc trắng ở tầng trên'], ['c2-wrong', 'Góc trắng vào nhầm nhà'], ['c2-twist', 'Góc trắng nằm ngược']], f: ['f1'] },
     { name: 'Tầng giữa', goal: 'Hai hàng dưới của 4 mặt bên đúng màu.',
-      steps: ['Tìm viên cạnh không có màu vàng.', 'Xoay tầng trên.', 'Xoay cả khối.', 'Nhìn màu trên của viên cạnh.', 'Làm công thức Gửi.', 'Làm đủ 4 viên cạnh.'],
-      ifs: ['Viên cạnh kẹt ở tầng giữa? Làm Gửi sang phải 1 lần để lấy nó ra.'],
-      cases: [['c3-right', 'Gửi sang phải'], ['c3-left', 'Gửi sang trái'], ['c3-stuck', 'Viên cạnh bị kẹt']], f: ['f3r', 'f3l'] },
-    { name: 'Chữ thập vàng', goal: 'Mặt trên có chữ thập vàng.',
-      steps: ['Nhìn hình vàng ở mặt trên.', 'Xoay tầng trên.', 'Làm công thức Chữ thập vàng.', 'Chưa có chữ thập? Làm lại.'],
-      ifs: [],
+      ifs: ['Bạn cạnh kẹt ở tầng giữa? Làm Gửi sang phải 1 lần để mời bạn ấy ra.'],
+      cases: [['c3-right', 'Gửi sang phải'], ['c3-left', 'Gửi sang trái'], ['c3-stuck', 'Bạn cạnh bị kẹt']], f: ['f3r', 'f3l'] },
+    { name: 'Chữ thập vàng', goal: 'Mặt trên có chữ thập vàng.', ifs: [],
       cases: [['c4-dot', 'Một chấm'], ['c4-L', 'Chữ L'], ['c4-line', 'Vạch thẳng']], f: ['f4'] },
-    { name: 'Cạnh vàng đúng chỗ', goal: 'Bốn viên cạnh vàng khớp màu ô giữa.',
-      steps: ['Xoay tầng trên.', 'Xoay cả khối.', 'Làm công thức Đổi cạnh.', 'Xoay tầng trên.'],
-      ifs: ['Cả 4 viên đã khớp? Xong luôn.', 'Hai viên khớp nằm đối diện? Làm Đổi cạnh 1 lần trước.'],
-      cases: [['c5-adj', 'Hai viên cạnh nhau'], ['c5-opp', 'Hai viên đối diện']], f: ['f5'] },
-    { name: 'Góc vàng đúng chỗ', goal: 'Bốn viên góc vàng đúng chỗ. Ô vàng chưa cần ngửa lên.',
-      steps: ['Tìm viên góc đúng chỗ.', 'Xoay cả khối.', 'Làm công thức Đổi góc.', 'Chưa đủ 4 viên? Làm thêm 1 lần.'],
-      ifs: ['Chưa viên nào đúng chỗ? Làm Đổi góc 1 lần trước.', 'Cả 4 viên đúng chỗ sẵn? Xong luôn.'],
-      cases: [['c6-one', 'Có 1 viên đúng chỗ'], ['c6-none', 'Chưa viên nào đúng chỗ']], f: ['f6'] },
-    { name: 'Xoay góc vàng', goal: 'Cả 6 mặt đúng màu!',
-      steps: ['Giữ nguyên hướng cầm khối.', 'Làm Thang máy ngược 2 lần.', 'Xoay tầng trên.', 'Lặp lại cho đủ 4 viên góc.', 'Xoay tầng trên.'],
-      ifs: ['Tầng dưới lộn xộn giữa chừng. Đừng sửa!'],
+    { name: 'Cạnh vàng khớp màu', goal: 'Bốn bạn cạnh vàng khớp màu với ô giữa.',
+      ifs: ['Cả 4 bạn khớp sẵn? Xong luôn!', 'Hai bạn khớp ngồi đối diện? Làm Đổi cạnh 1 lần trước.'],
+      cases: [['c5-adj', 'Hai bạn ngồi cạnh nhau'], ['c5-opp', 'Hai bạn ngồi đối diện']], f: ['f5'] },
+    { name: 'Góc vàng về nhà', goal: 'Bốn bạn góc vàng về đúng nhà. Ô vàng chưa cần ngửa lên.',
+      ifs: ['Chưa bạn nào đúng nhà? Làm Đổi góc 1 lần trước.', 'Cả 4 bạn đúng nhà sẵn? Xong luôn!'],
+      cases: [['c6-one', 'Có 1 bạn đúng nhà'], ['c6-none', 'Chưa bạn nào đúng nhà']], f: ['f6'] },
+    { name: 'Lật góc vàng', goal: 'Cả 6 mặt đúng màu!',
+      ifs: ['Tầng dưới bừa ra giữa chừng. Con đừng sửa nhé!'],
       cases: [], f: ['f7'] }
   ];
   var RES = {
@@ -919,52 +920,59 @@ var Core = (function () {
     { name: 'Tầng giữa', note: 'xếp tiếp theo', stages: [3] },
     { name: 'Tầng trên', note: 'xếp sau cùng', stages: [4, 5, 6, 7] }
   ];
-  // one: một dòng trên bản đồ. why: vì sao làm chặng này. idea: ý chính. gets, whys: được gì và vì sao, cho từng bước trong STAGES[k].steps.
+  // one: một dòng trên bản đồ. story: vài thẻ kể chuyện của chặng, mỗi thẻ = [một lời kể, hình khối tự diễn].
   var KNOW = [null,
-    { layer: 0, one: 'Cạnh trắng xuống đáy', why: 'Chữ thập trắng là khung của tầng dưới.',
-      idea: ['Gom ô trắng lên mặt trên trước: thành bông cúc.', 'Khớp màu bên rồi mới thả.', 'Xoay 2 lần: cánh hoa xuống thẳng đáy.'],
-      gets: ['Biết viên cần đưa đi.', 'Ô trắng về mặt trước.', 'Thêm 1 cánh hoa.', 'Bông cúc quanh ô giữa vàng.', 'Một cánh hoa khớp màu.', 'Cánh hoa đó xuống đáy.', 'Chữ thập trắng ở đáy.'],
-      whys: ['Chặng này chỉ lo 4 viên cạnh trắng.', 'Để dễ nhìn. Không viên nào đổi chỗ.', 'Mặt trên chưa có gì cần giữ.', 'Gom đủ rồi thả thì không viên nào kẹt.', 'Khớp rồi mới thả thì xuống đáy là đúng luôn.', 'Xoay 2 lần là lật nửa vòng.', 'Đó là khung của tầng dưới.'] },
-    { layer: 0, one: 'Góc trắng xuống đáy', why: 'Lấp đủ 4 góc là xong tầng dưới.',
-      idea: ['Hai màu bên cho biết chỗ của viên góc.', 'Đưa viên góc lên ngay trên chỗ của nó.', 'Thang máy đưa nó xuống. Chữ thập vẫn nguyên.'],
-      gets: ['Biết viên cần đưa xuống.', 'Hai ô giữa giống 2 màu của viên góc.', 'Viên góc vào vòng tròn.', 'Viên góc xuống tầng dưới.', 'Ô trắng úp xuống đáy.', 'Xong cả tầng dưới.'],
-      whys: ['Ở tầng trên thì dễ đưa đi nhất.', 'Hai màu đó cho biết chỗ của nó.', 'Đó là ngay trên chỗ của nó.', 'Cột phải lên đón, rồi xuống trả.', 'Mỗi lần, viên góc xoay một kiểu.', 'Từ đây phải giữ nguyên tầng dưới.'] },
-    { layer: 1, one: 'Cạnh vào tầng giữa', why: 'Tầng giữa chỉ còn thiếu 4 viên cạnh.',
-      idea: ['Viên cạnh không có vàng là của tầng giữa.', 'Màu trên cho biết gửi sang phải hay trái.', 'Công thức Gửi giữ nguyên tầng dưới.'],
-      gets: ['Biết viên cần gửi đi.', 'Viên cạnh thành vạch dọc.', 'Vạch dọc về mặt trước.', 'Biết gửi sang phải hay trái.', 'Viên cạnh vào tầng giữa.', 'Xong 2 tầng dưới.'],
-      whys: ['Không có vàng: chỗ của nó ở tầng giữa.', 'Vạch dọc: nó đứng ngay trên mặt của nó.', 'Công thức Gửi làm từ mặt trước.', 'Giống ô giữa bên nào thì gửi sang bên đó.', 'Công thức giữ nguyên tầng dưới.', 'Chỉ còn tầng trên.'] },
-    { layer: 2, one: 'Chữ thập vàng ở trên', why: 'Tầng trên cũng bắt đầu bằng chữ thập.',
-      idea: ['Công thức nào cũng trả 2 tầng dưới về chỗ.', 'Mỗi lần tiến một nấc: chấm, chữ L, vạch, chữ thập.', 'Phải đặt hình đúng hướng trước.'],
-      gets: ['Thấy chấm, chữ L hoặc vạch.', 'Chữ L vào 2 vòng tròn. Vạch thì nằm ngang.', 'Hình vàng tiến một nấc.', 'Chữ thập vàng ở mặt trên.'],
-      whys: ['Hình cho biết đang ở nấc nào.', 'Công thức chỉ lật đúng khi hình đúng hướng.', 'Thứ tự: chấm, chữ L, vạch, chữ thập.', 'Mỗi lần chỉ tiến một nấc.'] },
-    { layer: 2, one: 'Cạnh vàng khớp màu', why: 'Viên cạnh vàng còn màu bên chưa khớp.',
-      idea: ['Xoay tầng trên: luôn có 2 viên khớp màu.', 'Giữ 2 viên khớp. Đổi chỗ 2 viên kia.', 'Hai viên khớp nằm đối diện: làm công thức 1 lần trước.'],
-      gets: ['Có 2 viên cạnh vàng khớp màu.', 'Hai viên khớp vào 2 vòng tròn.', 'Hai viên còn lại đổi chỗ.', 'Cả 4 viên khớp màu.'],
-      whys: ['Hai viên khớp là mốc.', 'Ở đó chúng được giữ nguyên.', 'Công thức chỉ đổi 2 viên đó.', 'Sau công thức, tầng trên lệch một chút.'] },
-    { layer: 2, one: 'Góc vàng về đúng chỗ', why: 'Đưa 4 viên góc về đúng chỗ trước. Xoay sau.',
-      idea: ['Đúng chỗ: 3 màu giống 3 ô giữa quanh nó.', 'Đổi góc giữ 1 viên, đổi chỗ 3 viên kia.', 'Chưa có viên mốc: làm công thức 1 lần.'],
-      gets: ['Có 1 viên làm mốc.', 'Viên mốc vào vòng tròn.', 'Ba viên góc kia đổi chỗ.', 'Cả 4 viên góc đúng chỗ.'],
-      whys: ['Đúng chỗ: 3 màu giống 3 ô giữa quanh nó.', 'Đổi góc giữ yên góc này.', 'Chúng đổi chỗ theo vòng tròn.', 'Nhiều nhất 2 lần là xong.'] },
-    { layer: 2, one: 'Ô vàng ngửa lên', why: 'Chỉ còn vài viên góc nằm lệch.',
-      idea: ['Thang máy ngược 2 lần: viên góc xoay một nấc.', 'Tầng dưới lộn xộn là mượn tạm.', 'Chỉ xoay tầng trên. Không xoay cả khối.'],
-      gets: ['Cả chặng không xoay cả khối.', 'Viên góc trong vòng tròn xoay một nấc.', 'Viên góc chưa xong vào vòng tròn.', 'Mặt trên vàng. Tầng dưới về chỗ.', 'Xong cả khối!'],
-      whys: ['Phần mượn tạm phải giữ nguyên mới trả về được.', 'Ô vàng chưa ngửa thì thêm 2 lần.', 'Thang máy ngược chỉ xoay góc này.', 'Xong viên cuối thì phần mượn tự trả.', 'Tầng trên đã đúng, chỉ đang lệch.'] }
+    { layer: 0, one: 'Cái móng của ngôi nhà', story: [
+      ['Xong chặng này, đáy khối có một chữ thập trắng. Đó là cái móng của ngôi nhà.', { b: 'goal' }],
+      ['Mình gom 4 ô trắng lên mặt trên trước. Trông như một bông cúc.', { b: 'A', play: 'all' }],
+      ['Rồi xoay tầng trên, cho cánh hoa gặp ô giữa cùng màu.', { b: 'B', play: 1 }],
+      ['Xoay mặt đó 2 lần: cánh hoa rơi tõm xuống đúng nhà.', { b: 'B', show: 1, play: 'all' }]] },
+    { layer: 0, one: 'Lấp kín 4 góc', story: [
+      ['Chữ thập còn hở 4 góc. Chặng này mình lấp cho kín, là xong tầng dưới.', { b: 'goal' }],
+      ['Bạn góc nào cũng có 2 màu bên. Đó là địa chỉ nhà của bạn ấy.', { b: 'A', play: 1 }],
+      ['Mình đưa bạn góc lên ngay trên nóc nhà.', { b: 'A', show: 1, play: 1 }],
+      ['Rồi cho bạn ấy đi Thang máy xuống. Chữ thập vẫn y nguyên.', { b: 'A', show: 2, play: 1 }]] },
+    { layer: 1, one: 'Xây tầng giữa', story: [
+      ['Tầng dưới xong rồi. Giờ mình xây tầng giữa: chỉ thiếu 4 bạn cạnh thôi.', { b: 'goal' }],
+      ['Bạn cạnh nào không có màu vàng là người của tầng giữa.', { b: 'A' }],
+      ['Xoay cho bạn ấy thành một vạch dọc. Rồi đưa về mặt trước.', { b: 'A', play: 2 }],
+      ['Nhìn màu trên đầu bạn ấy. Giống bên nào thì gửi sang bên đó.', { b: 'A', show: 2, play: 1 }]] },
+    { layer: 2, one: 'Chữ thập trên nóc', story: [
+      ['Chỉ còn tầng trên thôi. Mình lại bắt đầu bằng một chữ thập, lần này màu vàng.', { b: 'goal' }],
+      ['Hình vàng lớn dần: chấm, chữ L, vạch, rồi chữ thập.', { b: 'start' }],
+      ['Trước khi làm chiêu, con đặt hình cho đúng hướng đã.', { b: 'A', play: 1 }],
+      ['Làm chiêu xong, hai tầng dưới vẫn y nguyên. Hay chưa!', { b: 'A', show: 1, play: 1 }]] },
+    { layer: 2, one: 'Bốn cạnh vàng khớp màu', story: [
+      ['Chữ thập vàng có rồi. Nhưng màu bên của 4 bạn cạnh còn lộn xộn.', { b: 'A' }],
+      ['Xoay tầng trên một lúc là có 2 bạn khớp màu.', { b: 'A', play: 1 }],
+      ['Hai bạn ấy ngồi yên. Chiêu Đổi cạnh đổi chỗ 2 bạn còn lại.', { b: 'A', show: 1, play: 'all' }],
+      ['Xoay tầng trên thêm tí nữa là khớp cả 4.', { b: 'A', after: 1, play: 'all' }]] },
+    { layer: 2, one: 'Bạn góc về đúng nhà', story: [
+      ['Còn 4 bạn góc. Chặng này chỉ đưa các bạn về đúng nhà. Nằm nghiêng cũng được.', { b: 'goal' }],
+      ['Về đúng nhà là: 3 màu của bạn ấy giống 3 ô giữa xung quanh.', { b: 'A' }],
+      ['Một bạn ngồi yên. Ba bạn kia đổi ghế theo vòng tròn.', { b: 'A', show: 1, play: 1 }],
+      ['Chưa bạn nào đúng nhà? Làm chiêu một lần là có ngay.', { b: 'B', play: 'all' }]] },
+    { layer: 2, one: 'Lật các ô vàng lên', story: [
+      ['Chặng cuối rồi con! Chỉ còn vài bạn góc nằm nghiêng.', { b: 'A' }],
+      ['Chiêu Thang máy ngược giúp bạn góc trở mình.', { b: 'A', play: 'all' }],
+      ['Tầng dưới sẽ bừa ra một lúc. Kệ nó, xong bạn góc cuối là tự gọn.', { b: 'A', until: 'c7-align' }],
+      ['Con nhớ nhé: chỉ xoay tầng trên, không xoay cả khối.', { b: 'A', after: 1, play: 'all' }]] }
   ];
-  // công thức làm được việc gì (không chỉ là dãy nước xoay)
+  // mỗi chiêu làm được việc gì
   var FWHY = {
-    f1: 'Cột phải lên đón viên góc, rồi xuống trả.',
-    f3r: 'Đưa viên cạnh vào tầng giữa. Tầng dưới vẫn nguyên.',
-    f3l: 'Như Gửi sang phải, làm ở bên trái.',
-    f4: 'Lật viên cạnh vàng ngửa lên. Hai tầng dưới vẫn nguyên.',
-    f5: 'Đổi chỗ 2 viên cạnh vàng: mặt trước và mặt trái.',
-    f6: 'Giữ viên góc trên bên phải mặt trước. Đổi chỗ 3 viên kia.',
-    f7: 'Xoay viên góc trên bên phải mặt trước.'
+    f1: 'Cột phải đi lên đón bạn góc, rồi đi xuống trả bạn về nhà.',
+    f3r: 'Gửi bạn cạnh vào tầng giữa. Tầng dưới vẫn y nguyên.',
+    f3l: 'Giống Gửi sang phải, nhưng làm ở bên trái.',
+    f4: 'Lật bạn cạnh vàng ngửa lên. Hai tầng dưới vẫn y nguyên.',
+    f5: 'Đổi chỗ 2 bạn cạnh vàng ở mặt trước và mặt trái.',
+    f6: 'Một bạn góc ngồi yên. Ba bạn kia đổi ghế vòng tròn.',
+    f7: 'Giúp bạn góc ở góc trên bên phải trở mình.'
   };
   // ba việc của mỗi chặng: tên thẻ và một câu nói nó để làm gì
   var TABS = [
-    ['learn', 'Hiểu', 'Biết đích đến và lý do.'],
-    ['guided', 'Làm theo', 'Xoay cùng máy cho quen tay.'],
-    ['test', 'Tự làm', 'Tự nghĩ, tự xoay.']
+    ['learn', 'Xem', 'Nghe kể chuyện của chặng.'],
+    ['guided', 'Làm theo', 'Con làm cùng máy.'],
+    ['test', 'Tự làm', 'Con tự làm một mình.']
   ];
   function threeJobs() {
     var ol = el('ol', 'steps3');
@@ -974,13 +982,13 @@ var Core = (function () {
   function layIcon(li) { var w = el('span', 'lay'); w.setAttribute('aria-hidden', 'true'); for (var j = 2; j >= 0; j--) w.appendChild(el('i', j === li ? 'on' : '')); return w; }
   // ---- quy tắc vàng: nhắc con cách học, không phải luật chơi ----
   var RULES = [
-    ['Vàng trên, trắng dưới', 'Luôn cầm khối như vậy.'],
-    ['Mỗi lần một bước nhỏ', 'Xong bước này mới sang bước sau.'],
-    ['Sai không sao, cứ thử lại', 'Có nút Lùi một bước để sửa.'],
-    ['Bí thì bấm Gợi ý nhẹ', 'Vẫn được tính là tự làm.'],
-    ['Làm hết công thức', 'Làm đủ thì phần đã xếp mới về chỗ cũ.'],
-    ['Chậm mà đúng', 'Không ai bấm giờ cả.'],
-    ['Mỗi ngày một chút', 'Mỗi ngày 10 đến 15 phút.']
+    ['Vàng trên, trắng dưới', 'Lúc nào con cũng cầm khối như vậy.'],
+    ['Mỗi lần một bước nhỏ', 'Xong bước này rồi mới sang bước sau.'],
+    ['Sai thì làm lại', 'Ai học rubik cũng xoay sai cả. Có nút Lùi một bước mà.'],
+    ['Bí thì xin gợi ý', 'Xin gợi ý không phải là thua đâu con.'],
+    ['Làm trọn một chiêu', 'Đang làm chiêu thì đừng bỏ dở giữa chừng.'],
+    ['Chậm mà chắc', 'Không ai bấm giờ con cả.'],
+    ['Mỗi ngày một chút', 'Mỗi ngày 10 đến 15 phút là đủ.']
   ];
   // quy tắc hợp với từng chặng (số thứ tự trong RULES)
   var STAGE_RULE = [null, 0, 1, 2, 3, 5, 6, 4];
@@ -996,16 +1004,17 @@ var Core = (function () {
     w.appendChild(el('p', '', RULES[i][1]));
     return w;
   }
-  // mỗi trang: tên, vài dòng ngắn (mỗi dòng một ý), loại hình minh họa
+  // mỗi trang: tên, một lời nói ngắn, loại hình minh họa
   var INTRO = [
-    ['Ô giữa đứng yên', ['Ô giữa là ô chính giữa mỗi mặt.', 'Ô giữa không bao giờ đổi chỗ.', 'Ô giữa màu gì, cả mặt về màu ấy.', 'Cầm khối: vàng ở trên, trắng ở dưới.'], 'c'],
-    ['Viên cạnh và viên góc', ['Viên cạnh có 2 màu.', 'Viên góc có 3 màu.', 'Giải rubik là đưa từng viên về đúng chỗ.'], 'p'],
-    ['Xếp từng tầng, từ dưới lên', ['Mình xếp từng tầng, không xếp từng mặt.', 'Xong tầng nào, giữ nguyên tầng đó.'], 'o'],
-    ['Mặt, tầng và cột', ['Mặt trước: mặt quay về phía bạn.', 'Tầng trên: 9 viên trên cùng.', 'Cột phải: 9 viên bên tay phải.', 'Bấm chữ gạch chân để xem trên khối.'], 'f'],
-    ['Cách xoay', ['Vuốt trên khối, hoặc bấm nút bên dưới.', 'Lớp giữa không xoay: nó giữ 6 ô giữa làm mốc.', 'Nút Cả khối: quay nguyên khối.', 'Nút Nhìn quanh: xem mặt sau.'], ''],
-    ['Dấu trên khối', ['Viền hồng: viên đang nói tới.', 'Vòng tròn: chỗ cần đưa viên tới.', 'Mũi tên hồng: hướng xoay.', 'Thử bấm nút Trên ← nhé!'], 's'],
-    ['Mỗi chặng 3 việc', ['Sai không sao, cứ thử lại!'], 't'],
-    ['7 quy tắc vàng', [], 'r']
+    ['Ô giữa', 'Đây là 6 ô giữa. Các bác ấy lười lắm: ai xoay kiểu gì cũng ngồi yên một chỗ.', 'c'],
+    ['Màu của mỗi mặt', 'Ô giữa màu gì, cả mặt phải về màu ấy. Con cầm khối sao cho vàng ở trên, trắng ở dưới nhé.', 'c'],
+    ['Các bạn nhỏ', 'Còn lại là các bạn nhỏ chạy lung tung. Bạn cạnh có 2 màu. Bạn góc có 3 màu.', 'p'],
+    ['Xây từng tầng', 'Mình xếp khối như xây nhà: tầng dưới trước, rồi tầng giữa, rồi tầng trên. Con xem máy xây thử nhé!', 'o'],
+    ['Mặt trước', 'Mặt quay về phía con là mặt trước. Tên các mặt ghi sẵn trên khối rồi đấy.', 'f'],
+    ['Cách xoay', 'Con vuốt trên khối, hoặc bấm nút ở dưới. Thử đi con!', 'x'],
+    ['Dấu trên khối', 'Bạn viền hồng là bạn đang được nhắc tới. Vòng tròn là chỗ bạn ấy cần đến. Con bấm nút Trên ← xem nào!', 's'],
+    ['Ba việc', 'Chặng nào cũng có 3 việc: xem, làm theo, rồi tự làm. Sai thì làm lại, không sao cả.', 't'],
+    ['Quy tắc vàng', 'Bảy điều nho nhỏ giúp con học vui hơn.', 'r']
   ];
   var REALCHK = [null,
     ['Lật khối lên nhìn mặt đáy: có một chữ thập màu trắng.', 'Nhìn 4 mặt bên: màu của mỗi viên cạnh trắng giống ô giữa ngay trên nó.'],
@@ -1029,15 +1038,15 @@ var Core = (function () {
     7: { A: { id: 'c7-twist', ok: function (s, pl) { if (Core.stageIndex(s) !== 6 || pl.segs.length !== 1) return false; var n = Core.plan(Core.run(s, Core.planMoves(pl)), { last7: true }); return !!n && n.id === 'c7-next'; } } }
   };
   var SCN = {
-    1: { steps: [{ b: 'A' }, { b: 'A', play: 1 }, { b: 'A', show: 1, play: 'all' }, { b: 'B', focus: 'wEdges' }, { b: 'B', play: 1 }, { b: 'B', show: 1, play: 'all' }, { b: 'goal' }], ifs: [], f: {}, idea: [{ b: 'A', play: 'all' }, { b: 'B', play: 1 }, { b: 'B', show: 2, play: 1 }] },
-    2: { steps: [{ b: 'A' }, { b: 'A', play: 1 }, { b: 'A', show: 1, play: 1 }, { b: 'A', show: 2, play: 1 }, { b: 'C', play: 'all' }, { b: 'goal' }], ifs: [{ b: 'B', play: 'all' }], f: { f1: { b: 'A', show: 2, play: 1 } }, idea: [{ b: 'A', play: 1 }, { b: 'A', show: 1, play: 1 }, { b: 'A', show: 2, play: 1 }] },
-    3: { steps: [{ b: 'A' }, { b: 'A', play: 1 }, { b: 'A', show: 1, play: 1 }, { b: 'A', show: 2 }, { b: 'A', show: 2, play: 1 }, { b: 'goal' }], ifs: [{ b: 'B', play: 'all' }], f: { f3r: { b: 'A', show: 2, play: 1 }, f3l: { b: 'D', show: 'f', play: 1 } }, idea: [{ b: 'A' }, { b: 'A', play: 2 }, { b: 'A', show: 2, play: 1 }] },
-    4: { steps: [{ b: 'A', focus: 'ycross' }, { b: 'A', play: 1 }, { b: 'A', show: 1, play: 1 }, { b: 'A', after: 1, play: 'all' }], ifs: [], f: { f4: { b: 'A', show: 1, play: 1 } }, idea: [{ b: 'A', show: 1, play: 1 }, { b: 'start' }, { b: 'A', play: 1 }] },
-    5: { steps: [{ b: 'A', play: 1 }, { b: 'A', show: 1, play: 1 }, { b: 'A', show: 2, play: 1 }, { b: 'A', after: 1, play: 'all' }], ifs: [{ b: 'B', play: 'all' }, { b: 'C', play: 'all' }], f: { f5: { b: 'A', show: 2, play: 1 } }, idea: [{ b: 'A', play: 1 }, { b: 'A', show: 2, play: 'all' }, { b: 'C', play: 'all' }] },
-    6: { steps: [{ b: 'A' }, { b: 'A', play: 1 }, { b: 'A', show: 1, play: 1 }, { b: 'A', after: 1, play: 'all' }], ifs: [{ b: 'B', play: 'all' }, { b: 'goal' }], f: { f6: { b: 'A', show: 1, play: 1 } }, idea: [{ b: 'A' }, { b: 'A', show: 1, play: 1 }, { b: 'B', play: 'all' }] },
-    7: { steps: [{ b: 'A' }, { b: 'A', play: 'all' }, { b: 'A', after: 1, play: 'all' }, { b: 'A', after: 2, until: 'c7-align' }, { b: 'A', after: 'c7-align', play: 'all' }], ifs: [{ b: 'A', play: 'all' }], f: { f7: { b: 'A', play: 'all' } }, idea: [{ b: 'A', play: 'all' }, { b: 'A', until: 'c7-align' }, { b: 'A', after: 1, play: 'all' }] }
+    1: { ifs: [], f: {} },
+    2: { ifs: [{ b: 'B', play: 'all' }], f: { f1: { b: 'A', show: 2, play: 1 } } },
+    3: { ifs: [{ b: 'B', play: 'all' }], f: { f3r: { b: 'A', show: 2, play: 1 }, f3l: { b: 'D', show: 'f', play: 1 } } },
+    4: { ifs: [], f: { f4: { b: 'A', show: 1, play: 1 } } },
+    5: { ifs: [{ b: 'B', play: 'all' }, { b: 'C', play: 'all' }], f: { f5: { b: 'A', show: 2, play: 1 } } },
+    6: { ifs: [{ b: 'B', play: 'all' }, { b: 'goal' }], f: { f6: { b: 'A', show: 1, play: 1 } } },
+    7: { ifs: [{ b: 'A', play: 'all' }], f: { f7: { b: 'A', play: 'all' } } }
   };
-  var MID = ['Hãy xoay cột trái hoặc cột phải.', 'Hãy xoay tầng trên hoặc tầng dưới.', 'Hãy xoay mặt trước.'];
+  var MID = ['Con xoay cột trái hoặc cột phải nhé.', 'Con xoay tầng trên hoặc tầng dưới nhé.', 'Con xoay mặt trước nhé.'];
 
   // ================= âm thanh, rung, pháo giấy =================
   var FX = (function () {
@@ -1066,6 +1075,25 @@ var Core = (function () {
     };
     return api;
   })();
+  // đọc to lời trong bong bóng. Chỉ bật khi máy có giọng tiếng Việt; tắt/bật bằng nút 🗣.
+  var Voice = (function () {
+    var VKEY = 'rubik7-voice-v1', ss = window.speechSynthesis, on = false, last = '';
+    try { on = localStorage.getItem(VKEY) === '1'; } catch (e) { }
+    function vi() { if (!ss) return null; var v = ss.getVoices().filter(function (x) { return /^vi/i.test(x.lang); }); return v[0] || null; }
+    function clean(t) { return t.replace(/↻/g, ' xuôi chiều kim đồng hồ ').replace(/↺/g, ' ngược chiều kim đồng hồ ').replace(/[←→↑↓⇐⇒›‹▸▶✓]/g, ' '); }
+    var api = {
+      can: function () { return !!vi(); },
+      on: function () { return on && !!vi(); },
+      toggle: function () { on = !on; try { localStorage.setItem(VKEY, on ? '1' : '0'); } catch (e) { } if (!on && ss) ss.cancel(); last = ''; return on; },
+      // force = con bấm nút Nghe; không thì chỉ đọc khi lời mới khác lời vừa đọc
+      say: function (t, force) {
+        var v = vi(); if (!v || !t || (!force && (!on || t === last))) return;
+        last = t; try { ss.cancel(); var u = new SpeechSynthesisUtterance(clean(t)); u.voice = v; u.lang = v.lang; u.rate = 0.92; ss.speak(u); } catch (e) { }
+      },
+      stop: function () { last = ''; if (ss) try { ss.cancel(); } catch (e) { } }
+    };
+    return api;
+  })();
   var Confetti = (function () {
     var cv = null, g = null, parts = [], raf = 0, W = 0, H = 0;
     var COLS = ['#ffd21a', '#16a34a', '#2563eb', '#ff7a1a', '#dc2626', '#ff2d95'];
@@ -1090,7 +1118,7 @@ var Core = (function () {
     return { burst: burst, stop: stop };
   })();
   // ---- khen sự chăm chỉ: đếm số khối đã luyện, không so nhanh chậm, không chấm điểm ----
-  var PRAISE = ['Giỏi lắm!', 'Tuyệt vời!', 'Bạn làm được rồi!', 'Chăm chỉ quá!', 'Hay lắm!'];
+  var PRAISE = ['Giỏi lắm con!', 'Tuyệt quá!', 'Con làm được rồi!', 'Chăm quá!', 'Hay lắm!'];
   function praise() { return PRAISE[Math.floor(Math.random() * PRAISE.length)]; }
   var MILES = [3, 5, 10, 20, 30, 50, 100];
 
@@ -1217,7 +1245,7 @@ var Core = (function () {
       if (r.el > 0) S.t0 = Date.now() - r.el; startTick();
     }
     computePlan(); snap();
-    toast('Tiếp tục khối bạn đang làm dở', 2400);
+    toast('Con làm tiếp khối đang dở nhé', 2400);
     return true;
   }
   function mark() {
@@ -1226,21 +1254,21 @@ var Core = (function () {
   }
   // dòng chữ nhỏ dưới khối: luôn nói rõ lúc này xoay được gì, không xoay được gì
   function peekNote() {
-    return S.done ? '' : R.look ? 'Đang nhìn quanh: chưa xoay được.' : S.mode === 'learn' ? 'Máy làm mẫu. Bạn chưa tự xoay.' : S.mode === 'real' ? 'Hình mẫu. Hãy xoay khối thật.' : '';
+    return S.done ? '' : R.look ? 'Đang nhìn quanh: chưa xoay được.' : S.mode === 'learn' ? 'Máy làm cho con xem.' : S.mode === 'real' ? 'Hình mẫu. Con xoay khối thật nhé.' : '';
   }
   function blocked(short, why, ms) { toast(short, ms || 3600); S.blockMsg = why; showBlock(); }
   function showBlock() {
     var c = $('#coach'), old = $('#blockbox'); if (old) old.remove();
     if (!S.blockMsg || S.gloss) return;
-    var b = because('div', 'blockbox', S.blockMsg, '🤔 Vì sao không xoay được?'), x = el('button', 'link', 'Mình hiểu rồi'); b.id = 'blockbox'; x.type = 'button';
+    var b = because('div', 'blockbox', S.blockMsg, 'Vì sao không xoay được?'), x = el('button', 'link', 'Con hiểu rồi'); b.id = 'blockbox'; x.type = 'button';
     x.addEventListener('click', function () { S.blockMsg = ''; showBlock(); }); b.appendChild(document.createTextNode(' ')); b.appendChild(x);
     c.insertBefore(b, c.firstChild);
   }
   var stillAt = 0;
   function stillMsg() {
     if (Date.now() - stillAt < 5000) return; stillAt = Date.now();
-    if (S.mode === 'learn') blocked('Ở đây máy làm mẫu.', 'Thẻ Hiểu để xem máy làm mẫu. Muốn tự xoay: bấm thẻ Làm theo.');
-    else if (S.mode === 'real') blocked('Đây là hình mẫu.', 'Máy không thấy khối thật của bạn. Khối này chỉ là hình mẫu. Muốn xoay trên máy: bấm Trên máy.');
+    if (S.mode === 'learn') blocked('Ở đây máy làm cho con xem.', 'Ở thẻ Xem, máy làm cho con xem. Muốn tự xoay thì con bấm thẻ Làm theo.');
+    else if (S.mode === 'real') blocked('Đây là hình mẫu thôi con.', 'Máy không nhìn thấy khối thật của con. Khối này chỉ là hình mẫu.');
     else toast(S.mode === 'intro' ? 'Máy đang giải mẫu. Chờ máy làm xong, hoặc bấm Dừng.' : 'Lúc này khối chưa xoay được.', 4000);
   }
   function setLook(on) {
@@ -1528,7 +1556,7 @@ var Core = (function () {
     return function (i) { return !!show[i]; };
   }
   function computePlan() {
-    S.plan = Core.plan(S.cube, { last7: S.last7 }); S.q = []; S.qi = 0; S.planBase = Core.stageIndex(S.cube);
+    S.plan = Core.plan(S.cube, { last7: S.last7 }); S.q = []; S.qi = 0; S.planBase = Core.stageIndex(S.cube); S.pn = (S.pn || 0) + 1;
     if (S.plan) S.plan.segs.forEach(function (g, gi) { g.moves.forEach(function (mv, mi) { S.q.push({ mv: mv, gi: gi, mi: mi }); }); });
   }
   function resetSession() {
@@ -1541,7 +1569,7 @@ var Core = (function () {
 
   // ---- mở các chế độ ----
   function show(view) {
-    Confetti.stop(); clearTimeout(toastTimer); $('#toast').classList.remove('on'); S.view = view; $('#home').hidden = view !== 'home'; $('#play').hidden = view !== 'play'; R.active = view === 'play';
+    Confetti.stop(); Voice.stop(); clearTimeout(toastTimer); $('#toast').classList.remove('on'); S.view = view; $('#home').hidden = view !== 'home'; $('#play').hidden = view !== 'play'; R.active = view === 'play';
     if (view === 'play') { R.resize(); setTimeout(R.resize, 60); } else { clearInterval(tickTimer); clearTimeout(demoTimer); clearTimeout(sceneTimer); renderHome(); mark(); }
     window.scrollTo(0, 0);
   }
@@ -1569,9 +1597,9 @@ var Core = (function () {
   // ---- nhận nước xoay ----
   function request(mv) {
     if (S.view !== 'play') return;
-    if (S.done) { blocked('Khối này xong rồi.', 'Khối này đã xong. Xoay thêm sẽ làm hỏng.'); return; }
+    if (S.done) { blocked('Khối này xong rồi con.', 'Khối này xong rồi. Xoay nữa là hỏng đấy!'); return; }
     if (!R.interactive) { stillMsg(); return; }
-    if (R.look) { blocked('Đang nhìn quanh.', 'Đang nhìn quanh thì nút xoay dễ nhầm lớp. Bấm "Xong, về hướng chính" trước.'); return; }
+    if (R.look) { blocked('Con đang nhìn quanh mà.', 'Đang nhìn quanh thì bấm nút dễ nhầm lắm. Con bấm "Xong, về hướng chính" trước nhé.'); return; }
     if (inputQ.length < 4) inputQ.push(mv);
     pump();
   }
@@ -1589,10 +1617,10 @@ var Core = (function () {
       S.wrong++; if (S.wrong >= 2) S.reveal = true;
       var want = S.q[S.qi], c0 = mv.charAt(0), cg = want ? S.plan.segs[want.gi] : null;
       S.blockMsg = '';
-      S.wrongMsg = (want && want.mv.charAt(0) === c0 ? 'Đúng lớp, nhưng ngược chiều.' : 'Bước này chưa xoay ' + LAYER[c0] + '.')
-        + ' Khối tự quay lại, không phải lỗi. Vì sao: '
-        + (S.stage === 7 && c0 === 'y' ? 'chặng 7 không xoay cả khối.' : cg && cg.f ? 'công thức phải làm đúng thứ tự.' : 'xoay khác đi thì bước sau không khớp.');
-      toast('Chưa đúng. Khối quay lại chỗ cũ.', 2200);
+      S.wrongMsg = (want && want.mv.charAt(0) === c0 ? 'Đúng lớp rồi, nhưng ngược chiều con ạ.' : 'Bước này chưa xoay ' + LAYER[c0] + ' đâu con.')
+        + ' Khối tự quay lại, không sao cả.'
+        + (S.stage === 7 && c0 === 'y' ? ' Chặng 7 không xoay cả khối.' : cg && cg.f ? ' Chiêu phải làm đúng thứ tự.' : '');
+      toast('Chưa đúng rồi. Con thử lại nhé!', 2200);
       FX.bad();
       R.arrow = null; R.nudge(mv, function () { render(); pump(); });
       return;
@@ -1607,7 +1635,8 @@ var Core = (function () {
     R.animate(mv, 170, function () { afterMove(mv); pump(); });
   }
   function afterMove(mv) {
-    if (accept(mv)) { S.qi++; S.wrong = 0; S.reveal = false; S.wrongMsg = ''; }
+    var was0 = S.q[S.qi], seg0 = was0 && S.plan ? S.plan.segs[was0.gi] : null, cheer = '';
+    if (accept(mv)) { S.qi++; S.wrong = 0; S.reveal = false; S.wrongMsg = ''; var nx0 = S.q[S.qi]; if (seg0 && seg0.g && (!nx0 || nx0.gi !== was0.gi) && (S.mode === 'guided' || S.hint > 0)) cheer = seg0.g; }
     else {
       if (S.qi > 0 && !S.stray) S.stray = { h: S.history.length - 1, base: S.planBase };
       S.plan = null; S.q = []; S.qi = 0;
@@ -1622,14 +1651,15 @@ var Core = (function () {
     var was = S.ms;
     if (S.mode === 'guided' ? clean : (S.mode === 'solve' && (clean || S.qi === 0 || Core.stageIndex(S.cube) > S.ms))) snap();
     var milestone = S.mode === 'solve' && S.ms > was && S.ms > (S.msMax || 0) && S.ms < S.goal;
-    if (milestone) toast('Máy đã kiểm tra: xong chặng ' + S.ms + ' ✓', 2600);
+    if (cheer) toast(cheer, 2200);
+    if (milestone) toast('Xong chặng ' + S.ms + ' rồi! ✓', 2600);
     if (S.mode === 'solve') S.msMax = Math.max(S.msMax || 0, S.ms);
     checkDone();
     if (!S.done && (milestone || (clean && S.mode === 'guided'))) FX.good();
     if (S.done || S.qi === 0) saveResume(); render();
   }
   function undo() {
-    if (!S.history.length && !S.done) { toast('Chưa có bước nào để lùi. Bạn xoay rồi mới lùi được.', 3000); return; }
+    if (!S.history.length && !S.done) { toast('Con chưa xoay bước nào mà.', 2600); return; }
     if (R.busy() || !S.history.length || S.done) return;
     var h = S.history.pop(); inputQ = [];
     FX.click();
@@ -1687,6 +1717,7 @@ var Core = (function () {
     R.animate(e.mv, reduce ? 240 : 520, function () {
       if (!S.demo) return;
       S.qi++;
+      var nx = S.q[S.qi], sg = S.plan && S.plan.segs[e.gi]; if (sg && sg.g && (!nx || nx.gi !== e.gi)) toast(sg.g, 2000);
       if (S.qi >= S.q.length) {
         if (S.demo.id === 'all' && Core.stageIndex(S.cube) < S.stage) { S.last7 = S.plan.stage === 7; computePlan(); }
         else { S.demo.over = true; S.demo.playing = false; seen(); }
@@ -1706,14 +1737,14 @@ var Core = (function () {
   function faceIds(X) { var v = Core.V[X]; return at(function (q) { return q[0] * v[0] + q[1] * v[1] + q[2] * v[2] === 1; }); }
   var HID = ' Mặt này đang khuất: bấm Nhìn quanh để xem.';
   var GLOSS = {
-    pink: { w: 'viền hồng', d: 'Viền hồng: viên mà bước đang làm nói tới. Lời hướng dẫn gọi nó là "viên viền hồng".', ids: function () { return R.focus; } },
+    pink: { w: 'viền hồng', d: 'Bạn hồng: bạn có viền hồng, là bạn đang được nhắc tới.', ids: function () { return R.focus; } },
     ring: { w: 'vòng tròn', d: 'Vòng tròn trắng: chỗ cần đưa viên tới, hoặc ô cần nhìn.' },
     arrow: { w: 'mũi tên hồng', d: 'Mũi tên hồng: hướng cần xoay. Nút cần bấm cũng đổi sang màu hồng.' },
-    F: { w: 'mặt trước', d: 'Mặt trước: mặt quay về phía bạn. Trên máy là mặt có nhãn "Mặt trước" (9 ô đang nhấp nháy). Xoay cả khối thì mặt khác sẽ thành mặt trước.', face: 'F' },
-    R: { w: 'mặt phải', d: 'Mặt phải: mặt bên tay phải bạn, có nhãn "Mặt phải" (9 ô đang nhấp nháy).', face: 'R' },
+    F: { w: 'mặt trước', d: 'Mặt trước: mặt quay về phía con. Trên máy là mặt có nhãn "Mặt trước" (9 ô đang nhấp nháy). Xoay cả khối thì mặt khác sẽ thành mặt trước.', face: 'F' },
+    R: { w: 'mặt phải', d: 'Mặt phải: mặt bên tay phải con, có nhãn "Mặt phải" (9 ô đang nhấp nháy).', face: 'R' },
     U: { w: 'mặt trên', d: 'Mặt trên: mặt ngửa lên trời, có nhãn "Mặt trên" (9 ô đang nhấp nháy). Ô giữa của nó màu vàng.', face: 'U' },
     B: { w: 'mặt sau', d: 'Mặt sau: mặt đối diện với mặt trước.' + HID, face: 'B' },
-    L: { w: 'mặt trái', d: 'Mặt trái: mặt bên tay trái bạn.' + HID, face: 'L' },
+    L: { w: 'mặt trái', d: 'Mặt trái: mặt bên tay trái con.' + HID, face: 'L' },
     D: { w: 'đáy', d: 'Đáy (mặt dưới): mặt úp xuống bàn. Ô giữa của nó màu trắng.' + HID, face: 'D' },
     top: { w: 'tầng trên', d: 'Tầng trên: 9 viên trên cùng (đang nhấp nháy). Nút Trên ← → xoay tầng này.', ids: function () { return at(function (q) { return q[1] === 1; }); } },
     mid: { w: 'tầng giữa', d: 'Tầng giữa: lớp nằm giữa tầng trên và tầng dưới (đang nhấp nháy). Lớp này không tự xoay được.', ids: function () { return at(function (q) { return q[1] === 0; }); } },
@@ -1723,24 +1754,24 @@ var Core = (function () {
     whole: { w: 'cả khối', d: 'Xoay cả khối: quay nguyên cả khối như đang cầm trên tay, không viên nào đổi chỗ. Nút Cả khối ⇐ ⇒.' },
     cell: { w: 'ô và viên', d: 'Ô là một ô vuông màu. Viên là một cục nhỏ của khối: viên có thể mang 1, 2 hoặc 3 ô màu.' },
     center: { w: 'ô giữa', d: 'Ô giữa: ô chính giữa của mỗi mặt (đang nhấp nháy). Ô giữa không bao giờ đổi chỗ.', ids: function () { return Core.G.centers; } },
-    edge: { w: 'viên cạnh', d: 'Viên cạnh: viên có 2 ô màu, nằm giữa hai viên góc. Ví dụ: 2 viên đang nhấp nháy. Cả khối có 12 viên cạnh.', ids: function () { return [S.cube.at[Core.key([0, 1, 1])], S.cube.at[Core.key([1, 0, 1])]]; } },
-    corner: { w: 'viên góc', d: 'Viên góc: viên có 3 ô màu, nằm ở góc khối. Ví dụ: 2 viên đang nhấp nháy. Cả khối có 8 viên góc.', ids: function () { return [S.cube.at[Core.key([1, 1, 1])], S.cube.at[Core.key([-1, -1, 1])]]; } },
+    edge: { w: 'viên cạnh', d: 'Bạn cạnh: viên có 2 ô màu. Ví dụ: 2 bạn đang nhấp nháy. Cả khối có 12 bạn cạnh.', ids: function () { return [S.cube.at[Core.key([0, 1, 1])], S.cube.at[Core.key([1, 0, 1])]]; } },
+    corner: { w: 'viên góc', d: 'Bạn góc: viên có 3 ô màu, nằm ở góc khối. Ví dụ: 2 bạn đang nhấp nháy. Cả khối có 8 bạn góc.', ids: function () { return [S.cube.at[Core.key([1, 1, 1])], S.cube.at[Core.key([-1, -1, 1])]]; } },
     petal: { w: 'cánh hoa', ids: petalIds, d: function (ids) { return 'Cánh hoa: viên cạnh có ô trắng, đang nằm ở mặt trên, ô trắng ngửa lên, sát ô giữa vàng. ' + (ids.length ? 'Khối này đang có ' + ids.length + ' cánh hoa (đang nhấp nháy).' : 'Khối này chưa có cánh hoa nào.'); } },
     daisy: { w: 'bông cúc', ids: function () { return petalIds().concat([S.cube.at[Core.key([0, 1, 0])]]); }, d: 'Bông cúc: đủ 4 cánh hoa trắng quanh ô giữa vàng ở mặt trên.' },
-    match: { w: 'khớp màu', d: 'Khớp màu: màu ở mặt bên của viên giống màu ô giữa ngay bên dưới nó.' },
-    home: { w: 'đúng chỗ', d: 'Đúng chỗ: viên nằm ở nơi mà các màu của nó giống các ô giữa quanh nó.' },
-    noMid: { d: 'Lớp giữa không xoay: nó giữ 6 ô giữa làm mốc màu. Mốc phải đứng yên.', ids: function () { return Core.G.centers; } },
-    noFree: { d: 'Làm theo mà xoay khác thì khối quay lại: công thức phải làm đúng thứ tự.' },
-    noY7: { d: 'Chặng 7 không xoay cả khối: phần mượn tạm phải giữ nguyên.' },
-    noLook: { d: 'Đang Nhìn quanh thì chưa xoay: nút xoay dễ nhầm lớp.' },
-    noWatch: { d: 'Thẻ Hiểu và Khối thật không xoay: ở đó chỉ là hình mẫu.' }
+    match: { w: 'khớp màu', d: 'Khớp màu: màu bên của bạn ấy giống ô giữa ngay bên dưới.' },
+    home: { w: 'đúng chỗ', d: 'Về nhà (đúng chỗ): các màu của bạn ấy giống các ô giữa xung quanh.' },
+    noMid: { d: 'Lớp giữa không xoay: các ô giữa phải ngồi yên làm mốc.', ids: function () { return Core.G.centers; } },
+    noFree: { d: 'Làm theo mà xoay khác thì khối quay lại: chiêu phải làm đúng thứ tự.' },
+    noY7: { d: 'Chặng 7 không xoay cả khối: xoay thì tầng dưới không gọn lại được.' },
+    noLook: { d: 'Đang Nhìn quanh thì chưa xoay: bấm nút dễ nhầm lớp lắm.' },
+    noWatch: { d: 'Thẻ Xem và Khối thật không xoay: ở đó khối chỉ là hình mẫu.' }
   };
   var FNAME = {};
   Object.keys(Core.FORMULAS).forEach(function (id) {
     var f = Core.FORMULAS[id]; FNAME[f.name] = id;
-    GLOSS[id] = { w: f.name, d: 'Công thức ' + f.name + ': ' + f.moves.map(function (m) { return MV[m]; }).join(', ') + '. Làm đủ ' + f.moves.length + ' nước theo đúng thứ tự mới tính là 1 lần.' };
+    GLOSS[id] = { w: f.name, d: 'Chiêu ' + f.name + ': ' + f.moves.map(function (m) { return MV[m]; }).join(', ') + '. Làm đủ ' + f.moves.length + ' nước theo đúng thứ tự mới tính là 1 lần.' };
   });
-  var TERMS = { 'mặt đáy': 'D' }, TERM_RE = (function () {
+  var TERMS = { 'mặt đáy': 'D', 'bạn cạnh': 'edge', 'bạn góc': 'corner', 'bạn hồng': 'pink', 'bạn viền hồng': 'pink', 'về nhà': 'home', 'đúng nhà': 'home', 'cùng màu': 'match' }, TERM_RE = (function () {
     ['F', 'R', 'U', 'B', 'L', 'D', 'top', 'mid', 'bot', 'colR', 'colL', 'whole', 'center', 'edge', 'corner', 'petal', 'daisy', 'match', 'home', 'pink', 'ring', 'arrow'].forEach(function (id) { TERMS[GLOSS[id].w] = id; });
     var words = Object.keys(FNAME);
     Object.keys(TERMS).forEach(function (w) { words.push(w, w.charAt(0).toUpperCase() + w.slice(1)); });
@@ -1774,7 +1805,7 @@ var Core = (function () {
     c.appendChild(el('h3', '', 'Quy ước gọi tên'));
     c.appendChild(el('p', 'note', 'Mỗi từ chỉ có một nghĩa. Bấm vào một dòng: khối sẽ nhấp nháy đúng chỗ đó.'));
     [['Dấu trên khối', ['pink', 'ring', 'arrow']], ['Sáu mặt', ['F', 'R', 'U', 'B', 'L', 'D']], ['Tầng và cột', ['top', 'mid', 'bot', 'colR', 'colL', 'whole']],
-      ['Ô và viên', ['cell', 'center', 'edge', 'corner']], ['Từ hay gặp', ['petal', 'daisy', 'match', 'home']], ['Công thức đã học', fs], ['Vì sao có lúc không xoay được', ['noMid', 'noFree', 'noY7', 'noLook', 'noWatch']]].forEach(function (grp) {
+      ['Ô và viên', ['cell', 'center', 'edge', 'corner']], ['Từ hay gặp', ['petal', 'daisy', 'match', 'home']], ['Chiêu đã học', fs], ['Vì sao có lúc không xoay được', ['noMid', 'noFree', 'noY7', 'noLook', 'noWatch']]].forEach(function (grp) {
       if (!grp[1].length) return;
       c.appendChild(el('p', 'sub', grp[0]));
       var box = el('div', 'glist');
@@ -1801,35 +1832,33 @@ var Core = (function () {
   function because(tag, cls, txt, head) {
     var e = el(tag, cls); e.appendChild(el('b', head ? 'h' : '', head || '💡 Vì sao: ')); e.appendChild(rich(txt)); return e;
   }
-  // mỗi bước đều nói rõ: làm xong thì được gì, và vì sao phải làm như vậy
-  function gain(tag, cls, get, why) {
-    var e = el(tag, cls);
-    if (get) { var a = el('span', 'ln'); a.appendChild(el('b', '', '✅ Được: ')); a.appendChild(rich(get)); e.appendChild(a); }
-    if (why) { var b = el('span', 'ln'); b.appendChild(el('b', '', '💡 Vì sao: ')); b.appendChild(rich(why)); e.appendChild(b); }
-    return e;
+  // Một bong bóng = một lời nói ngắn. Lý do không bày sẵn: con tò mò thì bấm "Vì sao thế?".
+  function bubble(txt, why, key) {
+    var w = el('div', 'say'), av = el('span', 'ava'), b = el('div', 'bub'), row = el('div', 'brow');
+    av.setAttribute('aria-hidden', 'true'); w.appendChild(av);
+    b.appendChild(rel('p', 'bt', txt)); b.appendChild(row);
+    function showWhy() { b.insertBefore(rel('p', 'bw', why), row); }
+    if (why && key && S.whyKey === key) showWhy();
+    else if (why) {
+      var q = el('button', 'askwhy', 'Vì sao thế?'); q.type = 'button';
+      q.addEventListener('click', function () { S.whyKey = key || ''; q.remove(); showWhy(); Voice.say(why, true); });
+      row.appendChild(q);
+    }
+    if (Voice.can()) { var h = el('button', 'hear', '🔈 Nghe'); h.type = 'button'; h.addEventListener('click', function () { Voice.say(txt, true); }); row.appendChild(h); }
+    w.appendChild(b);
+    Voice.say(txt);
+    return w;
   }
   function planBlock(showChips) {
     var w = el('div', 'plan');
     if (!S.plan) return w;
-    w.appendChild(el('p', 'sub', 'Đang làm'));
-    w.appendChild(el('h3', '', S.plan.title));
-    var ol = el('ol', 'segs'), e = S.q[S.qi], cur = e ? e.gi : S.plan.segs.length;
-    S.plan.segs.forEach(function (g, gi) {
-      var li = rel('li', gi < cur ? 'done' : gi === cur ? 'cur' : '', g.t);
-      if (gi === cur && g.n) li.appendChild(rel('span', 'why', g.n));
-      if (gi === cur && S.wrongMsg && S.mode === 'guided') li.appendChild(el('span', 'oops', S.wrongMsg));
-      if (gi === cur && (g.g || g.w)) li.appendChild(gain('span', 'because', g.g, g.w));
-      if (gi === cur && showChips) li.appendChild(chips(g, e.mi));
-      ol.appendChild(li);
-    });
-    w.appendChild(ol);
-    // chú thích: chỉ nhắc những dấu đang có trên khối
-    var lg = el('p', 'legend');
-    function lkey(cls, sym, txt) { var sp = el('span'), i = el('i', cls, sym); i.setAttribute('aria-hidden', 'true'); sp.appendChild(i); sp.appendChild(document.createTextNode(txt)); lg.appendChild(sp); }
-    if (S.plan.focus.length) lkey('k-pink', '', 'viên đang nói tới');
-    if (e && S.plan.segs[e.gi].marks.length) lkey('k-ring', '', 'chỗ cần tới');
-    if (R.arrow) lkey('k-arrow', '➜', 'hướng xoay');
-    w.appendChild(lg);
+    var e = S.q[S.qi], n = S.plan.segs.length, cur = e ? e.gi : n - 1, g = S.plan.segs[cur];
+    w.appendChild(el('p', 'mission', '🎯 ' + S.plan.title));
+    if (n > 1) w.appendChild(stepDots(e ? cur : n, n));
+    var b = bubble(g.t, g.w, (S.pn || 0) + ':' + cur);
+    if (S.wrongMsg && S.mode === 'guided') { var bb = $('.bub', b); bb.insertBefore(el('p', 'oops', S.wrongMsg), bb.children[1]); }
+    w.appendChild(b);
+    if (showChips && e) w.appendChild(chips(g, e.mi));
     return w;
   }
   // ---- thẻ mục tiêu: hình kết quả + lời + tiến độ ----
@@ -1925,10 +1954,10 @@ var Core = (function () {
     if (S.view !== 'play' || S.done || !(S.mode === 'solve' || (S.mode === 'guided' && S.round === 2))) return;
     idleTimer = setTimeout(function () {
       if (S.view !== 'play' || S.done) return;
-      if (S.mode === 'guided' && !S.reveal) { toast('Chưa chắc bước này? Bấm "Chỉ cho mình bước này" nhé 🙂', 4200); return; }
+      if (S.mode === 'guided' && !S.reveal) { toast('Chưa chắc bước này? Con bấm "Chỉ cho con bước này" nhé', 4200); return; }
       if (S.mode !== 'solve' || S.kind === 'exam') return;
-      if (!S.soft && S.hint === 0) { if (S.nudge) return; S.nudge = true; toast('Bí à? Bấm Gợi ý nhẹ nhé. Vẫn được tính là tự làm 🙂', 4200); render(); }
-      else if (S.hint === 0) toast('Vẫn bí? Bấm Gợi ý để xem từng bước nhé 🙂', 4200);
+      if (!S.soft && S.hint === 0) { if (S.nudge) return; S.nudge = true; toast('Bí à con? Bấm Gợi ý nhẹ nhé. Vẫn tính là tự làm.', 4200); render(); }
+      else if (S.hint === 0) toast('Vẫn bí à? Con bấm Gợi ý để xem từng bước nhé.', 4200);
     }, 30000);
   }
   // mặt mà bước này nói tới: nhãn của mặt đó đổi sang màu hồng
@@ -1967,7 +1996,7 @@ var Core = (function () {
     var cg = showSteps ? S.plan.segs[e.gi] : null;
     R.arrow = arrow; R.focus = focus; R.marks = cg ? cg.marks : introMarks; R.hot = cg ? hotFace(cg) : (S.mode === 'intro' && INTRO[S.introPage][2] === 'f' ? 'F' : ''); R.labels = !S.done;
     // bàn phím xoay
-    var pad = $('#pad'); pad.hidden = S.mode === 'learn' || S.mode === 'real' || !!S.done || (S.mode === 'intro' && 'otr'.indexOf(INTRO[S.introPage][2] || '-') >= 0);
+    var pad = $('#pad'); pad.hidden = S.mode === 'learn' || S.mode === 'real' || !!S.done || (S.mode === 'intro' && 'xs'.indexOf(INTRO[S.introPage][2] || '-') < 0);
     Array.prototype.forEach.call(pad.children, function (b) { b.classList.toggle('exp', arrow === b.dataset.mv); b.classList.toggle('off', !!R.look); b.setAttribute('aria-disabled', R.look ? 'true' : 'false'); });
     mark();
     $('#peek').hidden = false; $('#peek').textContent = peekNote();
@@ -1987,20 +2016,20 @@ var Core = (function () {
     armIdle();
   }
   function renderIntro(c) {
-    var pg = INTRO[S.introPage], kind = pg[2];
+    var pg = INTRO[S.introPage], kind = pg[2], n = INTRO.length;
     R.pose(0, 0);
-    c.appendChild(el('p', 'sub', 'Làm quen với khối, trang ' + (S.introPage + 1) + '/' + INTRO.length));
-    c.appendChild(el('h3', '', pg[0]));
-    if (kind === 't') c.appendChild(threeJobs());
-    if (pg[1].length) { var ul = el('ul', 'lines'); pg[1].forEach(function (t) { ul.appendChild(rel('li', '', t)); }); c.appendChild(ul); }
+    c.appendChild(el('p', 'sub', 'Làm quen · ' + pg[0]));
+    c.appendChild(stepDots(S.introPage, n));
+    c.appendChild(bubble(pg[1]));
     if (kind === 'o') tourPage(c);
+    if (kind === 't') c.appendChild(threeJobs());
     if (kind === 'r') c.appendChild(rulesList());
     function go(d) { if (S.tourDirty) { stopScene(); R.interactive = true; S.tourDirty = false; setCube(Core.newCube()); } S.blockMsg = ''; S.introPage += d; render(); }
     var row = el('div', 'btns stick');
-    if (S.introPage < INTRO.length - 1) row.appendChild(btn('Tiếp ›', 'primary', function () { go(1); }));
+    if (S.introPage < n - 1) row.appendChild(btn('Tiếp ›', 'primary', function () { go(1); }));
     else row.appendChild(btn('Vào Chặng 1 ›', 'primary', function () { prog.intro = true; save(); openStage(1, 'learn'); }));
     if (S.introPage > 0) row.appendChild(btn('‹ Trước', 'quiet', function () { go(-1); }));
-    if (kind !== 'o' && kind !== 't' && kind !== 'r') {
+    if (kind === 'x') {
       row.appendChild(btn('Xáo khối', 'quiet', function () { setCube(Core.apply(Core.newCube(), Core.scramble())); render(); }));
       row.appendChild(btn('Về khối sạch', 'quiet', function () { setCube(Core.newCube()); render(); }));
     }
@@ -2017,7 +2046,6 @@ var Core = (function () {
     c.appendChild(box);
     var now = el('p', 'gprog'); now.id = 'tourNow'; c.appendChild(now);
     var r2 = el('div', 'btns'), tb = btn('', '', toggleTour); tb.id = 'tourBtn'; r2.appendChild(tb); c.appendChild(r2);
-    c.appendChild(because('p', 'whybox', 'Xoay bừa sẽ làm hỏng phần đã xong. Công thức sửa vài viên, rồi trả phần còn lại về chỗ cũ.', '💡 Vì sao cần công thức?'));
     tourMark();
   }
   function tourStage(sc) { for (var j = 0; j < sc.ends.length; j++) if (sc.ends[j].end > sc.i) return sc.ends[j].stage; return 8; }
@@ -2026,8 +2054,8 @@ var Core = (function () {
     Array.prototype.forEach.call(document.querySelectorAll('#coach .lays .sc'), function (ch) {
       var k = +ch.dataset.k; ch.className = 'sc' + (k < cur ? ' ok' : k === cur ? ' cur' : ''); ch.textContent = k + ' ' + STAGES[k].name + (k < cur ? ' ✓' : '');
     });
-    if (now) { now.hidden = !sc; now.textContent = !sc ? '' : cur > 7 ? 'Xong cả 7 chặng! Bạn cũng sẽ làm được.' : 'Máy đang làm chặng ' + cur + '.'; }
-    if (tb) tb.textContent = sc && cur <= 7 ? '■ Dừng' : S.tourDirty ? '▶ Xem lại với một khối khác' : '▶ Xem máy giải cả khối';
+    if (now) { now.hidden = !sc; now.textContent = !sc ? '' : cur > 7 ? 'Xong cả 7 chặng! Con cũng sẽ làm được.' : 'Máy đang làm chặng ' + cur + '.'; }
+    if (tb) tb.textContent = sc && cur <= 7 ? '■ Dừng' : S.tourDirty ? '▶ Xem lại với khối khác' : '▶ Xem máy xây cả khối';
   }
   function playTour() {
     stopScene(); clearTimeout(demoTimer);
@@ -2123,12 +2151,11 @@ var Core = (function () {
   function illList(tag, cls, arr, specs) { var l = el(tag, cls); arr.forEach(function (t, i) { l.appendChild(ill(rel('li', '', t), specs && specs[i])); }); return l; }
   // phần phụ: thu gọn sẵn, bấm mới mở, để màn hình bớt chữ
   function fold(title, node) { var d = el('details', 'more'); d.appendChild(el('summary', '', title)); d.appendChild(node); return d; }
-  // ---- màn Xem: mỗi lần chỉ một bước, khối tự làm mẫu đúng bước đó ----
+  // ---- thẻ Xem: mỗi lần một lời kể, khối tự diễn đúng lời đó ----
   function goStep(i) {
+    var st = KNOW[S.stage].story; i = Math.max(0, Math.min(i, st.length - 1));
     S.lstep = i; S.blockMsg = ''; render();
-    var sp = i >= 0 ? SCN[S.stage].steps[i] : null;
-    if (sp) playScene(sp, $('#coach .bigstep'));
-    else { stopScene(); setCube(Core.clone(goalCube(S.stage))); R.mask = maskFor(S.stage); R.focus = []; R.marks = []; R.hot = ''; R.arrow = null; R.pose(0, S.stage <= 2 ? -0.98 : 0); }
+    playScene(st[i][1], null);
   }
   function stepDots(i, n) { var w = el('div', 'sdots'); for (var j = 0; j < n; j++) w.appendChild(el('span', j < i ? 'ok' : j === i ? 'cur' : '')); return w; }
   function casesRow() {
@@ -2139,65 +2166,30 @@ var Core = (function () {
   }
   function lessonExtras(c) {
     var k = S.stage, st = STAGES[k], sn = SCN[k];
-    if (st.ifs.length) {
-      if (k === 7) { c.appendChild(el('p', 'sub', 'Nhớ nhé')); c.appendChild(illList('ul', 'ifs', st.ifs, sn.ifs)); }
-      else c.appendChild(fold('Nếu gặp trường hợp khác (' + st.ifs.length + ')', illList('ul', 'ifs', st.ifs, sn.ifs)));
-    }
-    c.appendChild(fold('Xem máy làm mẫu từng trường hợp', casesRow()));
-  }
-  function ideaList(arr, specs) {
-    var l = el('ul', 'ideas');
-    arr.forEach(function (t, i) { var li = el('li'); li.appendChild(rel('span', '', t)); l.appendChild(ill(li, specs && specs[i])); });
-    return l;
+    if (st.f.length) { var fb = el('div', 'glist'); st.f.forEach(function (id) { fb.appendChild(ill(formulaBox(id), sn.f[id])); }); c.appendChild(fold('Chiêu của chặng này (' + st.f.length + ')', fb)); }
+    if (st.ifs.length) c.appendChild(fold('Nếu gặp chuyện lạ (' + st.ifs.length + ')', illList('ul', 'ifs', st.ifs, sn.ifs)));
+    c.appendChild(fold('Xem máy làm từng trường hợp', casesRow()));
   }
   function toGuided() { seen(); setTab('guided'); }
   function renderLesson(c) {
-    var k = S.stage, st = STAGES[k], kn = KNOW[k], sn = SCN[k], n = st.steps.length, i = Math.min(S.lstep, n - 1);
-    var allLink = el('button', 'link', S.lall ? 'Xem từng bước một' : 'Xem cả ' + n + ' bước cùng lúc'); allLink.type = 'button';
-    allLink.addEventListener('click', function () { S.lall = !S.lall; render(); });
-    if (S.lall) {
-      c.appendChild(goalCard(k, 'Bấm dòng có ▸ để xem máy làm.', k <= 3 ? 'Ô xám: chưa cần để ý.' : ''));
-      var ol = el('ol', 'how');
-      st.steps.forEach(function (t, j) { var li = rel('li', '', t); li.appendChild(rel('span', 'why', '✅ ' + kn.gets[j])); li.appendChild(rel('span', 'why', '💡 ' + kn.whys[j])); ol.appendChild(ill(li, sn.steps[j])); });
-      c.appendChild(ol);
-      st.f.forEach(function (id) { c.appendChild(ill(formulaBox(id), sn.f[id])); });
-      lessonExtras(c);
-      var r2 = el('div', 'btns stick'); r2.appendChild(btn('Sang Làm theo ›', 'primary', toGuided));
-      r2.appendChild(btn('‹ Tổng quan chặng', 'quiet', function () { S.lall = false; goStep(-1); })); c.appendChild(r2);
-      c.appendChild(allLink);
-      return;
-    }
-    if (i < 0) {
-      // tổng quan của chặng: đích đến, vì sao, ý chính. Hiểu rồi mới xoay.
-      var hd = el('p', 'sub row'); hd.appendChild(layIcon(kn.layer)); hd.appendChild(document.createTextNode('Chặng ' + k + '/7 · ' + LAYERS[kn.layer].name)); c.appendChild(hd);
-      var gl = el('p', 'goalline'); gl.appendChild(el('b', '', '🎯 Đích: ')); gl.appendChild(rich(st.goal)); c.appendChild(ill(gl, { b: 'goal' }));
-      c.appendChild(because('p', 'whybox', kn.why, '💡 Vì sao làm chặng này?'));
-      c.appendChild(el('p', 'sub', '🔑 Ý chính · bấm ▸ để xem'));
-      c.appendChild(ideaList(kn.idea, sn.idea));
-      var r0 = el('div', 'btns stick'); r0.appendChild(btn('Làm theo ›', 'primary', toGuided));
-      r0.appendChild(btn('▶ Xem máy làm', '', function () { goStep(0); })); c.appendChild(r0);
-      if (st.f.length) { var fb = el('div', 'glist'); st.f.forEach(function (id) { fb.appendChild(ill(formulaBox(id), sn.f[id])); }); c.appendChild(fold('Công thức của chặng này (' + st.f.length + ')', fb)); }
+    var k = S.stage, kn = KNOW[k], st = kn.story, n = st.length, i = Math.max(0, Math.min(S.lstep, n - 1));
+    var hd = el('p', 'sub row'); hd.appendChild(layIcon(kn.layer)); hd.appendChild(document.createTextNode('Chặng ' + k + '/7 · ' + LAYERS[kn.layer].name)); c.appendChild(hd);
+    c.appendChild(stepDots(i, n));
+    c.appendChild(bubble(st[i][0]));
+    var nav = el('div', 'btns stick');
+    if (i < n - 1) nav.appendChild(btn('Tiếp ›', 'primary', function () { goStep(i + 1); }));
+    else nav.appendChild(btn('Con làm thử nhé ›', 'primary', toGuided));
+    if (i > 0) nav.appendChild(btn('‹ Trước', 'quiet', function () { goStep(i - 1); }));
+    nav.appendChild(btn('↻ Xem lại', 'quiet', function () { playScene(st[i][1], null); }));
+    c.appendChild(nav);
+    if (i === n - 1) {
+      var r = el('div', 'btns'); r.appendChild(btn('▶ Xem máy làm cả chặng', '', function () { startDemo('all'); demoPlay(true); })); c.appendChild(r);
       lessonExtras(c);
       c.appendChild(ruleCard(STAGE_RULE[k]));
-      c.appendChild(allLink);
-      return;
     }
-    c.appendChild(el('p', 'sub', 'Máy làm mẫu · bước ' + (i + 1) + '/' + n));
-    c.appendChild(stepDots(i, n));
-    c.appendChild(ill(rel('p', 'bigstep', st.steps[i]), sn.steps[i]));
-    c.appendChild(gain('p', 'whybox', kn.gets[i], kn.whys[i]));
-    // công thức được nhắc tới trong bước này
-    st.f.forEach(function (id) { var nm = Core.FORMULAS[id].name; if (st.steps[i].indexOf(nm) >= 0 || (nm.indexOf('Gửi') === 0 && st.steps[i].indexOf('công thức Gửi') >= 0)) c.appendChild(ill(formulaBox(id), sn.f[id])); });
-    var nav = el('div', 'btns stick');
-    if (i < n - 1) nav.appendChild(btn('Bước tiếp ›', 'primary', function () { goStep(i + 1); }));
-    else nav.appendChild(btn('Làm theo ›', 'primary', toGuided));
-    nav.appendChild(btn(i > 0 ? '‹ Trước' : '‹ Tổng quan', 'quiet', function () { goStep(i - 1); }));
-    c.appendChild(nav);
-    if (i === n - 1) lessonExtras(c);
-    c.appendChild(allLink);
   }
   function renderDemo(c) {
-    c.appendChild(el('p', 'sub', S.demo.over ? 'Làm mẫu xong' : 'Máy đang làm mẫu'));
+    c.appendChild(el('p', 'sub', S.demo.over ? 'Máy làm xong rồi' : 'Máy đang làm, con xem nhé'));
     c.appendChild(planBlock(true));
     var row = el('div', 'btns');
     if (S.demo.over) row.appendChild(btn('Xem lại', 'primary', function () { startDemo(S.demo.id, true); demoPlay(true); }));
@@ -2206,15 +2198,15 @@ var Core = (function () {
       var stp = btn('Từng bước ›', '', function () { S.demo.playing = false; clearTimeout(demoTimer); demoStep(); }); row.appendChild(stp);
     }
     row.appendChild(btn('Ví dụ khác', '', function () { var id = S.demo.id; startDemo(id); demoPlay(true); }));
-    row.appendChild(btn('‹ Bài học', 'quiet', function () { setTab('learn'); if (S.lstep >= 0 && !S.lall) goStep(S.lstep); }));
+    row.appendChild(btn('‹ Quay lại', 'quiet', function () { setTab('learn'); goStep(S.lstep); }));
     c.appendChild(row);
   }
   function renderGuided(c) {
-    c.appendChild(el('p', 'sub', 'Vòng ' + S.round + '/2 · ' + (S.round === 1 ? 'Xoay theo mũi tên hồng.' : 'Không còn mũi tên.')));
+    c.appendChild(el('p', 'sub', 'Vòng ' + S.round + '/2 · ' + (S.round === 1 ? 'Có mũi tên hồng chỉ đường' : 'Không còn mũi tên')));
     c.appendChild(planBlock(S.hint === 2 || S.reveal));
-    if (S.round === 2 && !S.reveal) { var row = el('div', 'btns'); row.appendChild(btn('Chỉ cho mình bước này', 'quiet', function () { S.reveal = true; render(); })); c.appendChild(row); }
+    if (S.round === 2 && !S.reveal) { var row = el('div', 'btns'); row.appendChild(btn('Chỉ cho con bước này', 'quiet', function () { S.reveal = true; render(); })); c.appendChild(row); }
     c.appendChild(el('p', 'gprog', progLine(S.stage)));
-    c.appendChild(fold('🎯 Kết quả cần đạt của chặng ' + S.stage, goalCard(S.stage, '', '', true)));
+    c.appendChild(fold('🎯 Xong chặng ' + S.stage + ' thì khối thế nào?', goalCard(S.stage, '', '', true)));
   }
   // việc 3 có hai chỗ làm: trên máy và trên khối thật
   function placeSwitch() {
@@ -2226,7 +2218,7 @@ var Core = (function () {
     return w;
   }
   function renderSolve(c) {
-    var task = S.kind === 'test' ? (stg(S.goal).passed ? 'Luyện thêm cho quen tay.' : 'Tự giải đến hết chặng ' + S.goal + '.')
+    var task = S.kind === 'test' ? (stg(S.goal).passed ? 'Con luyện thêm cho quen tay nhé.' : 'Con tự giải đến hết chặng ' + S.goal + ' nhé.')
       : S.kind === 'exam' ? 'Giải 3 khối, không có gợi ý.'
       : S.kind === 'review' ? 'Giải 1 khối.' : 'Giải cả khối.';
     if (S.kind === 'test') c.appendChild(placeSwitch());
@@ -2234,16 +2226,16 @@ var Core = (function () {
     c.appendChild(stageChips());
     c.appendChild(el('p', 'gprog', progLine(Math.min(7, S.ms + 1))));
     if (S.checkMsg) c.appendChild(el('p', 'check', S.checkMsg));
-    if ((S.kind === 'test' || S.kind === 'review') && S.assisted) c.appendChild(el('p', 'note', 'Khối luyện cùng gợi ý. Cứ làm cho xong nhé!'));
+    if ((S.kind === 'test' || S.kind === 'review') && S.assisted) c.appendChild(el('p', 'note', 'Khối này con làm cùng gợi ý. Cứ làm cho xong nhé!'));
     else if (S.soft && (S.kind === 'test' || S.kind === 'review')) c.appendChild(el('p', 'note', 'Gợi ý nhẹ vẫn được tính là tự làm.'));
     if (S.soft && S.hint === 0 && S.plan && !S.stray) {
       var sb = el('div', 'soft'); sb.appendChild(el('p', 'sub', 'Gợi ý nhẹ'));
       sb.appendChild(el('b', '', S.plan.title));
-      if (S.plan.focus.length) sb.appendChild(el('p', 'note', 'Viên viền hồng là viên cần lo.'));
+      if (S.plan.focus.length) sb.appendChild(el('p', 'note', 'Con lo cho bạn viền hồng nhé.'));
       c.appendChild(sb);
     }
     if ((S.hint > 0 || S.soft) && S.stray) {
-      c.appendChild(el('p', '', 'Bạn xoay khác công thức. Công thức phải làm đúng thứ tự.'));
+      c.appendChild(el('p', '', 'Con xoay khác chiêu rồi. Chiêu phải làm đúng thứ tự.'));
       var r0 = el('div', 'btns');
       r0.appendChild(btn('Quay lại chỗ đúng', 'primary', backToGood));
       r0.appendChild(btn('Cứ gợi ý từ chỗ này', '', function () { S.stray = null; computePlan(); render(); }));
@@ -2261,21 +2253,21 @@ var Core = (function () {
   function renderReal(c) {
     var k = S.stage, st = STAGES[k], g = stg(k);
     c.appendChild(placeSwitch());
-    c.appendChild(goalCard(k, 'Làm chặng ' + k + ' trên khối thật.', '', true));
-    if (!g.passed) c.appendChild(el('p', 'check', 'Nên tự làm được trên máy trước đã.'));
-    var rs = ['Cầm khối: vàng trên, trắng dưới.', 'Xáo khối khoảng 20 lần.'], rsp = [{ solved: 1, focus: 'ud' }, { solved: 1, scramble: 1 }];
+    c.appendChild(goalCard(k, 'Con làm chặng ' + k + ' trên khối thật nhé.', '', true));
+    if (!g.passed) c.appendChild(el('p', 'check', 'Con nên tự làm được trên máy trước đã.'));
+    var rs = ['Con cầm khối: vàng trên, trắng dưới.', 'Xáo khối khoảng 20 lần.'], rsp = [{ solved: 1, focus: 'ud' }, { solved: 1, scramble: 1 }];
     if (k > 1) { rs.push('Làm lại chặng 1' + (k > 2 ? ' đến ' + (k - 1) : '') + '.'); rsp.push(null); }
     rs.push('Làm chặng ' + k + '.', 'Tự kiểm tra ở dưới.'); rsp.push({ b: 'start' }, { b: 'goal' });
     c.appendChild(illList('ol', 'how', rs, rsp));
-    c.appendChild(fold('Vì sao máy và khối thật xoay khác nhau?', illList('ul', 'ifs', ['Máy tự xáo khối trên máy, nên nó không giống khối bạn đang cầm.',
+    c.appendChild(fold('Vì sao máy và khối thật xoay khác nhau?', illList('ul', 'ifs', ['Máy tự xáo khối của máy, nên không giống khối con đang cầm.',
       'Các bước xoay sẽ khác, nhưng cách làm giống hệt.',
-      'Máy không nhìn thấy khối thật. Bạn tự kiểm tra bằng hình kết quả.'], [{ solved: 1, scramble: 1 }, { b: 'start' }, { b: 'goal' }])));
+      'Máy không nhìn thấy khối thật. Con tự so với hình nhé.'], [{ solved: 1, scramble: 1 }, { b: 'start' }, { b: 'goal' }])));
     var row = el('div', 'cases');
     st.cases.forEach(function (cs) { var b = el('button', 'case', cs[1]); b.type = 'button'; b.addEventListener('click', function () { setTab('learn'); startDemo(cs[0]); demoPlay(true); }); row.appendChild(b); });
     var all = el('button', 'case', 'Cả chặng từ đầu đến cuối'); all.type = 'button'; all.addEventListener('click', function () { setTab('learn'); startDemo('all'); demoPlay(true); }); row.appendChild(all);
     c.appendChild(row);
     c.appendChild(el('p', 'sub', 'Tự kiểm tra khối thật'));
-    var boxes = [], ok = btn(g.real ? 'Đã ghi nhận: làm được trên khối thật ✓' : 'Mình đã làm được trên khối thật', 'primary', function () { g.real = true; save(); render(); });
+    var boxes = [], ok = btn(g.real ? 'Con làm được trên khối thật rồi ✓' : 'Con làm được trên khối thật rồi!', 'primary', function () { g.real = true; save(); render(); });
     REALCHK[k].forEach(function (t, i) {
       var lab = el('label', 'rchk'), cb = el('input'); cb.type = 'checkbox'; cb.id = 'rc-' + k + '-' + i; cb.checked = !!g.real;
       cb.addEventListener('change', function () { ok.disabled = !!g.real || !boxes.every(function (b) { return b.checked; }); });
@@ -2290,7 +2282,7 @@ var Core = (function () {
     c.appendChild(fold('Nút trên máy là động tác nào trên khối thật?', illList('ul', 'ifs', LEGEND.map(function (x) { return x[0]; }), LEGEND.map(function (x) { return { legend: x[1] }; }))));
   }
   function countLine(w, d) {
-    var p = el('p', 'score', d.type === 'test' ? 'Bạn đã giải ' + d.n + ' khối ở chặng này' + (d.total > d.n ? ', tổng cộng ' + d.total + ' khối.' : '.') : 'Bạn đã giải tổng cộng ' + d.total + ' khối.');
+    var p = el('p', 'score', d.type === 'test' ? 'Con đã giải ' + d.n + ' khối ở chặng này' + (d.total > d.n ? ', tổng cộng ' + d.total + ' khối.' : '.') : 'Con đã giải tổng cộng ' + d.total + ' khối.');
     if (d.mile) { p.appendChild(document.createTextNode(' ')); p.appendChild(el('span', 'rec', 'Mốc ' + d.total + ' khối!')); }
     w.appendChild(p);
   }
@@ -2299,29 +2291,29 @@ var Core = (function () {
     function add(h, p) { w.appendChild(el('h3', '', h)); if (p) w.appendChild(el('p', '', p)); }
     w.appendChild(el('div', 'bigpraise', d.star || d.passed ? '🏆' : '🎉'));
     if (d.type === 'guided') {
-      if (S.round === 1) { add('Xong vòng 1! ' + praise(), 'Vòng 2: bạn tự xoay theo lời nhắc. Cần thì bấm "Chỉ cho mình bước này".'); row.appendChild(btn('Vào vòng 2', 'primary', function () { S.round = 2; newGuided(); render(); })); }
-      else { add('Xong vòng 2! ' + praise(), 'Bạn đã sẵn sàng tự làm. Bí thì có Gợi ý nhẹ giúp bạn.'); row.appendChild(btn('Sang Tự làm', 'primary', function () { setTab('test'); })); }
+      if (S.round === 1) { add('Xong vòng 1! ' + praise(), 'Vòng 2 không còn mũi tên. Bí thì con bấm "Chỉ cho con bước này".'); row.appendChild(btn('Vào vòng 2', 'primary', function () { S.round = 2; newGuided(); render(); })); }
+      else { add('Xong vòng 2! ' + praise(), 'Giờ con tự làm được rồi đấy. Bí thì có Gợi ý nhẹ.'); row.appendChild(btn('Sang Tự làm', 'primary', function () { setTab('test'); })); }
       row.appendChild(btn('Luyện thêm một khối', '', function () { newGuided(); render(); }));
     } else if (d.type === 'test') {
       var again = function () { newSolve(); render(); };
       var nextBtn = function (cls) { return k < 7 ? btn('Học chặng ' + (k + 1), cls, function () { openStage(k + 1, 'learn'); }) : btn('Vào thi tốt nghiệp', cls, function () { openSolve('exam'); }); };
       if (d.passed) {
-        add('Qua chặng ' + k + '! ' + praise(), 'Bạn đã tự giải được. ' + (k < 7 ? 'Chặng ' + (k + 1) + ' đã mở.' : 'Bài thi tốt nghiệp đã mở.') + ' Giờ thử trên khối thật nhé.');
+        add('Qua chặng ' + k + '! ' + praise(), 'Con tự giải được rồi! ' + (k < 7 ? 'Chặng ' + (k + 1) + ' đã mở.' : 'Bài thi tốt nghiệp đã mở.') + ' Giờ con thử trên khối thật nhé.');
         row.appendChild(btn('Làm trên khối thật', 'primary', function () { setTab('real'); })); row.appendChild(nextBtn('')); row.appendChild(btn('Giải thêm khối nữa', '', again));
       } else if (d.clean) {
-        if (d.star) add('Thành thạo 🏅', 'Bạn đã tự giải 3 khối ở chặng này. Tay bạn đã quen rồi!');
-        else add(praise(), d.streak >= 3 ? 'Bạn đã thành thạo chặng này 🏅.' : 'Tự giải thêm ' + (3 - d.streak) + ' khối nữa là được huy hiệu Thành thạo 🏅.');
+        if (d.star) add('Thành thạo 🏅', 'Con tự giải 3 khối ở chặng này rồi. Tay con quen rồi đấy!');
+        else add(praise(), d.streak >= 3 ? 'Con thành thạo chặng này rồi 🏅.' : 'Tự giải thêm ' + (3 - d.streak) + ' khối nữa là được huy hiệu Thành thạo 🏅.');
         row.appendChild(btn('Khối tiếp theo', 'primary', again)); row.appendChild(nextBtn(''));
       } else {
-        add('Xong rồi! ' + praise(), stg(k).passed ? 'Mỗi khối là một lần luyện. Lần sau thử chỉ dùng Gợi ý nhẹ nhé.' : 'Bạn đã giải xong cùng gợi ý, thế là tiến bộ rồi! Khối sau thử chỉ dùng Gợi ý nhẹ: vẫn được qua chặng.');
+        add('Xong rồi! ' + praise(), stg(k).passed ? 'Mỗi khối là một lần luyện. Lần sau con thử chỉ dùng Gợi ý nhẹ nhé.' : 'Con giải xong cùng gợi ý, thế là tiến bộ rồi! Khối sau con thử chỉ dùng Gợi ý nhẹ nhé.');
         row.appendChild(btn('Thử khối khác', 'primary', again)); if (stg(k).passed) row.appendChild(nextBtn(''));
       }
     } else if (d.type === 'exam') {
-      if (d.passed) { add('Tốt nghiệp!', 'Bạn giải được mọi khối 3×3. Hẹn ôn lại sau 1, 3 và 7 ngày.'); }
+      if (d.passed) { add('Tốt nghiệp!', 'Con giải được mọi khối 3×3 rồi. Hẹn con ôn lại sau 1, 3 và 7 ngày.'); }
       else { add('Xong khối ' + Math.min(d.wins, 3) + '/3', d.wins < 3 ? 'Còn ' + (3 - d.wins) + ' khối nữa.' : 'Nhanh nhất: ' + fmt(prog.exam.best) + '.'); row.appendChild(btn('Khối tiếp theo', 'primary', function () { newSolve(); render(); })); }
     } else if (d.type === 'review') {
       if (d.clean) add('Ôn xong! ' + praise(), 'Bài ôn đã được ghi lại.');
-      else { add('Xong rồi!', 'Bạn vẫn nhớ cách làm. Thử thêm 1 khối chỉ dùng Gợi ý nhẹ để ghi nhận bài ôn nhé.'); row.appendChild(btn('Thử lại', 'primary', function () { newSolve(); render(); })); }
+      else { add('Xong rồi!', 'Con vẫn nhớ cách làm. Con thử thêm 1 khối chỉ dùng Gợi ý nhẹ nhé.'); row.appendChild(btn('Thử lại', 'primary', function () { newSolve(); render(); })); }
     } else { add('Giải xong! ' + praise()); row.appendChild(btn('Khối khác', 'primary', function () { newSolve(); render(); })); }
     if (d.type !== 'guided') countLine(w, d);
     row.appendChild(btn('Về bảng chặng', 'quiet', function () { show('home'); }));
@@ -2350,7 +2342,7 @@ var Core = (function () {
     // bản đồ: 7 chặng xếp theo 3 tầng
     var b = $('#board'); b.textContent = '';
     var hd = el('div', 'maphead'); hd.appendChild(el('h2', '', 'Bản đồ 7 chặng'));
-    hd.appendChild(el('p', '', 'Hình nhỏ: khối khi xong chặng đó.')); b.appendChild(hd);
+    hd.appendChild(el('p', '', 'Hình nhỏ là khối khi xong chặng đó.')); b.appendChild(hd);
     function tile(num, name, one, cls, meta, fn, locked, k) {
       var t = el('button', 'tile ' + cls + (locked ? ' lock' : '')); t.type = 'button';
       t.appendChild(el('span', 'num', num));
@@ -2377,7 +2369,7 @@ var Core = (function () {
       });
     });
     var ex = prog.exam;
-    tile('★', 'Thi tốt nghiệp', 'Tự giải 3 khối, không gợi ý', 'exam' + (ex.at ? ' done' : ''), !examOpen() ? '🔒 Khóa' : ex.at ? 'Nhanh nhất ' + fmt(ex.best) : (function () { var d = el('span', 'd3'); d.appendChild(dots(Math.min(3, ex.wins || 0), 3)); return d; })(), function () { openSolve('exam'); }, examOpen() ? null : 'Qua chặng 7 để mở bài thi');
+    tile('★', 'Thi tốt nghiệp', 'Con tự giải 3 khối, không gợi ý', 'exam' + (ex.at ? ' done' : ''), !examOpen() ? '🔒 Khóa' : ex.at ? 'Nhanh nhất ' + fmt(ex.best) : (function () { var d = el('span', 'd3'); d.appendChild(dots(Math.min(3, ex.wins || 0), 3)); return d; })(), function () { openSolve('exam'); }, examOpen() ? null : 'Qua chặng 7 để mở bài thi');
     // người học
     var who = $('#who'); who.textContent = '';
     $('#whoSum').textContent = 'Người học: ' + (profile.name || 'chưa đặt tên');
@@ -2409,7 +2401,7 @@ var Core = (function () {
     if (anyDue) $('#revFold').open = true;
     var frEl = $('#freeRec');
     frEl.hidden = !prog.n;
-    if (prog.n) frEl.textContent = 'Bạn đã luyện tổng cộng ' + prog.n + ' khối. Chăm chỉ lắm!';
+    if (prog.n) frEl.textContent = 'Con đã luyện tổng cộng ' + prog.n + ' khối. Chăm lắm!';
     $('#unlockAll').textContent = prog.all ? 'Khóa lại theo thứ tự chặng' : 'Phụ huynh: mở khóa mọi chặng';
   }
   var homeToastTimer = null;
@@ -2433,7 +2425,7 @@ var Core = (function () {
     R.onMove = request;
     R.onStill = stillMsg;
     $('#gloss').addEventListener('click', function () { S.gloss = !S.gloss; render(); });
-    R.onBlocked = function (axis) { blocked('Lớp giữa không xoay được.', 'Lớp giữa giữ 6 ô giữa làm mốc màu. Mốc phải đứng yên. ' + MID[axis], 3200); R.flash(Core.G.centers, 5200); };
+    R.onBlocked = function (axis) { blocked('Lớp giữa không xoay được đâu con.', 'Lớp giữa giữ 6 ô giữa. Các bác ấy phải ngồi yên làm mốc. ' + MID[axis], 3200); R.flash(Core.G.centers, 5200); };
     $('#back').addEventListener('click', function () { show('home'); });
     $('#freeBtn').addEventListener('click', function () { openSolve('free'); });
     $('#unlockAll').addEventListener('click', function () { prog.all = !prog.all; save(); renderHome(); });
@@ -2450,6 +2442,10 @@ var Core = (function () {
     var snd = $('#snd');
     function sndUI() { var on = FX.on(); snd.textContent = on ? '🔊' : '🔇'; snd.setAttribute('aria-pressed', on ? 'true' : 'false'); }
     sndUI(); snd.addEventListener('click', function () { FX.toggle(); sndUI(); toast(FX.on() ? 'Đã bật âm thanh và rung' : 'Đã tắt âm thanh và rung'); });
+    var vb = $('#voice');
+    function voiceUI() { vb.hidden = !Voice.can(); vb.setAttribute('aria-pressed', Voice.on() ? 'true' : 'false'); }
+    voiceUI(); if (window.speechSynthesis) try { window.speechSynthesis.addEventListener('voiceschanged', voiceUI); } catch (e) { }
+    vb.addEventListener('click', function () { var on = Voice.toggle(); voiceUI(); toast(on ? 'Máy sẽ đọc to cho con nghe' : 'Đã tắt giọng đọc'); if (on) { var t = $('#coach .bt'); if (t) Voice.say(t.textContent, true); } });
     $('#look').addEventListener('click', function () { setLook(!R.look); if (R.look) toast('Kéo ngón tay trên khối để nhìn mọi phía', 2600); });
     loadProfile(); loadLocal(); loadResume(); renderHome(); initCloud();
     function boot(data) {
@@ -2465,7 +2461,7 @@ var Core = (function () {
     var hot = window.claude && window.claude.hot;
     if (hot && hot.snapshot) { try { hot.snapshot(function () { return { r: RES_, last: LAST }; }); } catch (e) { } }
     if (hot && hot.ready) hot.ready(boot); else boot((hot && hot.data) || {});
-    window.__rubik = { S: S, R: R, mergeProg: mergeProg, profile: function () { return profile; }, addProfile: addProfile, switchProfile: switchProfile, plist: function () { return plist; }, SCN: SCN, buildScene: buildScene, request: request, openStage: openStage, openSolve: openSolve, setTab: setTab, prog: function () { return prog; } };
+    window.__rubik = { KNOW: KNOW, S: S, R: R, mergeProg: mergeProg, profile: function () { return profile; }, addProfile: addProfile, switchProfile: switchProfile, plist: function () { return plist; }, SCN: SCN, buildScene: buildScene, request: request, openStage: openStage, openSolve: openSolve, setTab: setTab, prog: function () { return prog; } };
   })();
 })();
 
