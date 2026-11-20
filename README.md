@@ -31,17 +31,24 @@ Mục tiêu: giúp trẻ vượt qua nỗi sợ "khó", hiểu **vì sao** làm 
 
 ### Mỗi chặng có 3 việc
 
-1. **Hiểu**: một màn tổng quan gồm *Xong chặng này được gì* (khối lớn hiện đúng kết quả), *Vì sao làm chặng này*, và 3 *Ý chính* (bấm dòng có ▸ để máy minh họa trên khối).
+1. **Hiểu**: một màn tổng quan gồm *Đích* (khối lớn hiện đúng kết quả), *Vì sao làm chặng này*, và 3 *Ý chính* (bấm dòng có ▸ để máy minh họa trên khối).
    Từ đây vào thẳng Làm theo, hoặc xem máy làm mẫu từng bước. Công thức, trường hợp khác, máy làm mẫu từng trường hợp được thu gọn.
 2. **Làm theo**: vòng 1 có mũi tên hồng, vòng 2 chỉ còn lời nhắc. Bước đang làm nằm trên cùng.
 3. **Tự làm**: tự giải trên máy, rồi chuyển sang **Trên khối thật** ngay trong cùng thẻ.
 
 Thi tốt nghiệp sau chặng 7, ôn lại sau 1, 3, 7 ngày.
 
+### Ít chữ: mỗi câu một việc
+
+- Dòng lệnh chỉ nói **một hành động** ("Xoay tầng trên."). Kết quả và lý do nằm ở hai dòng riêng, mỗi dòng một ý ngắn.
+- Bước nào gộp 2 việc thì tách thành 2 bước (ví dụ "khớp màu" và "xoay mặt đó 2 lần" ở chặng 1).
+- Trang Làm quen, quy tắc vàng, lời báo khi không xoay được: đều là các dòng ngắn, không viết thành đoạn.
+- Khi sửa lời, giữ quy tắc này: một câu = một hành động hoặc một đối tượng, khoảng 10 từ trở lại.
+
 ### Bước nào cũng nói rõ "được gì" và "vì sao"
 
-- Mỗi bước (ở màn máy làm mẫu, Làm theo, và khi xin Gợi ý) có một ô vàng: **✅ Được gì** (xong bước này thì khối thành thế nào) và **💡 Vì sao** (lý do phải làm như vậy).
-- Mỗi công thức có một dòng nói nó *làm được việc gì* (ví dụ: Thang máy = cột phải đi lên đón viên góc rồi đi xuống trả nó vào tầng dưới), không chỉ là dãy nước xoay.
+- Mỗi bước (ở màn máy làm mẫu, Làm theo, và khi xin Gợi ý) có một ô vàng: **✅ Được** (xong bước này thì khối thành thế nào) và **💡 Vì sao** (lý do phải làm như vậy).
+- Mỗi công thức có một dòng nói nó *làm được việc gì* (ví dụ Thang máy: cột phải lên đón viên góc, rồi xuống trả), không chỉ là dãy nước xoay.
 - Nội dung nằm trong `KNOW` (vì sao của chặng, ý chính, được gì/vì sao của từng bước), `FWHY` (công thức), và `g`/`w` của từng `seg(...)` trong bộ giải.
 
 ### Không xoay được thì luôn nói vì sao
