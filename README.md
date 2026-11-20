@@ -18,23 +18,46 @@ rồi vào http://localhost:8000.
 
 ## Cách chơi
 
-Mục tiêu: giúp trẻ vượt qua nỗi sợ "khó", chịu khó thực hành và học từng bước nhỏ. Không chấm điểm, không đua thời gian.
+Mục tiêu: giúp trẻ vượt qua nỗi sợ "khó", hiểu **vì sao** làm từng việc chứ không chỉ làm theo. Không chấm điểm, không đua thời gian.
 
-- **7 chặng × 4 bước**: Xem → Làm theo → Tự làm → Khối thật. Thi tốt nghiệp sau chặng 7, ôn lại sau 1, 3, 7 ngày.
-- **Màn Xem từng bước một**: mở đầu bằng hình kết quả, rồi mỗi lần chỉ một bước, khối tự làm mẫu đúng bước đó.
-  Công thức được nhắc trong bước nào thì hiện ngay ở bước đó. Có thể chuyển sang xem tất cả các bước cùng lúc.
-- **Lời từng bước ngắn gọn**: mỗi bước một câu ngắn nói việc cần làm; lời giải thích chỉ hiện ở bước đang làm.
-  Trên khối luôn có nhãn **Mặt trước / Mặt phải / Mặt trên**; mặt mà bước đang làm nói tới thì nhãn đổi sang màu hồng.
-  Chỗ cần đưa viên tới được khoanh **vòng tròn** ngay trên khối, không phải tả bằng lời ("góc trên bên phải của mặt trước").
-- **Quy ước gọi tên**: mỗi từ (mặt trước, tầng trên, cột phải, viên cạnh, cánh hoa, khớp màu, tên công thức…) chỉ có một nghĩa.
-  Trong lời hướng dẫn, từ nào có quy ước thì gạch chân: bấm vào là hiện nghĩa và khối nhấp nháy đúng chỗ đó.
-  Nút **📖 Quy ước** dưới khối mở cả bảng. Dưới các bước có dòng chú thích: viền hồng = viên đang nói tới, vòng tròn = chỗ cần tới, mũi tên = hướng xoay.
-- **Không xoay được thì luôn nói vì sao**: xoay sai ở màn Làm theo (khối quay lại chỗ cũ, có lời giải thích ngay dưới bước đang làm),
-  kéo khối ở màn Xem / Khối thật, bấm nút khi đang Nhìn quanh, vuốt lớp giữa, khối đã xong, chưa có bước để lùi.
-- **Gợi ý 3 mức**: Gợi ý nhẹ (chỉ nói tình huống, khoanh viên cần làm, vẫn tính là tự làm) → Gợi ý → Chỉ từng bước.
-- **Nhắc nhẹ**: ngồi yên 30 giây ở màn Tự làm thì nút Gợi ý nhẹ nhấp nháy kèm lời nhắc; ở vòng 2 màn Làm theo thì nhắc nút "Chỉ cho mình bước này".
-- **Khen sự chăm chỉ**: khối nào giải xong cũng được tính là đã luyện (kể cả khi có gợi ý). Đếm số khối mỗi chặng và tổng cộng, có mốc 3, 5, 10, 20… khối.
-- **Thành thạo 🏅**: tự giải 3 khối ở một chặng (cộng dồn, không cần liên tiếp).
+### Tổng quan trước, chi tiết sau
+
+- **Trang chủ** chỉ có ba thứ chính: nút **Học tiếp** (lúc nào cũng chỉ một việc cần làm tiếp), **Bản đồ** 7 chặng xếp theo 3 tầng
+  (tầng dưới: chặng 1–2, tầng giữa: chặng 3, tầng trên: chặng 4–7; mỗi chặng có hình khối khi xong chặng đó), và **3 việc của mỗi chặng**.
+  Quy tắc vàng, ôn tập, người học được thu gọn bên dưới.
+- **Làm quen với khối** (8 trang): ô giữa, viên cạnh/viên góc, *xếp từng tầng từ dưới lên*, tên gọi, cách xoay, dấu trên khối, 3 việc, quy tắc vàng.
+  Trang "Xếp từng tầng" có nút **Xem máy giải cả khối**: máy giải trọn một khối trong khoảng nửa phút, vừa giải vừa báo đang ở chặng nào,
+  và giải thích vì sao cần công thức.
+
+### Mỗi chặng có 3 việc
+
+1. **Hiểu**: một màn tổng quan gồm *Xong chặng này được gì* (khối lớn hiện đúng kết quả), *Vì sao làm chặng này*, và 3 *Ý chính* (bấm dòng có ▸ để máy minh họa trên khối).
+   Từ đây vào thẳng Làm theo, hoặc xem máy làm mẫu từng bước. Công thức, trường hợp khác, máy làm mẫu từng trường hợp được thu gọn.
+2. **Làm theo**: vòng 1 có mũi tên hồng, vòng 2 chỉ còn lời nhắc. Bước đang làm nằm trên cùng.
+3. **Tự làm**: tự giải trên máy, rồi chuyển sang **Trên khối thật** ngay trong cùng thẻ.
+
+Thi tốt nghiệp sau chặng 7, ôn lại sau 1, 3, 7 ngày.
+
+### Bước nào cũng nói rõ "được gì" và "vì sao"
+
+- Mỗi bước (ở màn máy làm mẫu, Làm theo, và khi xin Gợi ý) có một ô vàng: **✅ Được gì** (xong bước này thì khối thành thế nào) và **💡 Vì sao** (lý do phải làm như vậy).
+- Mỗi công thức có một dòng nói nó *làm được việc gì* (ví dụ: Thang máy = cột phải đi lên đón viên góc rồi đi xuống trả nó vào tầng dưới), không chỉ là dãy nước xoay.
+- Nội dung nằm trong `KNOW` (vì sao của chặng, ý chính, được gì/vì sao của từng bước), `FWHY` (công thức), và `g`/`w` của từng `seg(...)` trong bộ giải.
+
+### Không xoay được thì luôn nói vì sao
+
+- Lời ngắn hiện trên khối, còn **lý do đầy đủ nằm lại** trong ô cam "Vì sao không xoay được?" cho đến khi con bấm "Mình hiểu rồi" hoặc xoay được nước tiếp theo.
+- Lớp giữa: vì nó mang 6 ô giữa, là mốc màu của mỗi mặt. Đang Nhìn quanh: vì mặt trước không còn ở trước mặt nên các nút sẽ xoay nhầm lớp.
+  Thẻ Hiểu / Khối thật: vì ở đó máy làm mẫu hoặc chỉ là hình để so. Khối đã xong: vì xoay thêm sẽ làm hỏng.
+- Ở Làm theo, xoay khác hướng dẫn thì khối quay lại chỗ cũ, kèm lý do theo đúng tình huống: đang giữa công thức nào, hoặc vì sao chặng 7 không xoay cả khối.
+- Nút **📖 Quy ước** có thêm mục "Vì sao có lúc không xoay được" gom tất cả các lý do trên.
+
+### Những thứ giữ nguyên
+
+- **Quy ước gọi tên**: mỗi từ chỉ có một nghĩa; từ có quy ước thì gạch chân, bấm vào là hiện nghĩa và khối nhấp nháy đúng chỗ.
+  Nhãn Mặt trước / Mặt phải / Mặt trên luôn có trên khối; viền hồng = viên đang nói tới, vòng tròn = chỗ cần tới, mũi tên = hướng xoay.
+- **Gợi ý 3 mức**: Gợi ý nhẹ (vẫn tính là tự làm) → Gợi ý → Chỉ từng bước. Ngồi yên 30 giây thì được nhắc nhẹ.
+- **Khen sự chăm chỉ**: khối nào giải xong cũng được tính; mốc 3, 5, 10, 20… khối; tự giải 3 khối ở một chặng là Thành thạo 🏅.
 - Không đồng hồ, không đếm nước khi học; chỉ bài thi tốt nghiệp có đồng hồ.
-- **Quy tắc vàng**: 7 điều giúp học tốt, có ở trang chủ, trang cuối phần Làm quen, và mỗi chặng nhắc lại 1 điều phù hợp.
-- **Hiệu ứng**: pháo giấy khi xong, âm thanh + rung (nút 🔊 trên thanh tiêu đề để tắt).
+- **Quy tắc vàng**: 7 điều, có ở trang chủ (thu gọn), trang cuối phần Làm quen, và mỗi chặng nhắc lại 1 điều phù hợp.
+- **Hiệu ứng**: pháo giấy khi xong, âm thanh + rung (nút 🔊 để tắt).
