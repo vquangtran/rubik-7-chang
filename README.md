@@ -28,4 +28,5 @@ Mục tiêu: giúp trẻ vượt qua nỗi sợ "khó", chịu khó thực hành
 - **Khen sự chăm chỉ**: khối nào giải xong cũng được tính là đã luyện (kể cả khi có gợi ý). Đếm số khối mỗi chặng và tổng cộng, có mốc 3, 5, 10, 20… khối.
 - **Thành thạo 🏅**: tự giải 3 khối ở một chặng (cộng dồn, không cần liên tiếp).
 - Không đồng hồ, không đếm nước khi học; chỉ bài thi tốt nghiệp có đồng hồ.
+- **Quy tắc vàng**: 7 điều giúp học tốt, có ở trang chủ, trang cuối phần Làm quen, và mỗi chặng nhắc lại 1 điều phù hợp.
 - **Hiệu ứng**: pháo giấy khi xong, âm thanh + rung (nút 🔊 trên thanh tiêu đề để tắt).

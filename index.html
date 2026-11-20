@@ -216,6 +216,14 @@ p { margin: 0; }
   .stat { gap: 5px; font-size: 12px; }
   .stat .dot { width: 7px; height: 7px; }
 }
+.rules { margin: 0; padding: 0; list-style: none; counter-reset: rule; display: flex; flex-direction: column; gap: 8px; }
+.rules li { counter-increment: rule; display: grid; grid-template-columns: 30px 1fr; column-gap: 8px; font-size: 14px; line-height: 1.4; color: var(--muted); }
+.rules li::before { content: counter(rule); grid-row: span 2; width: 26px; height: 26px; border-radius: 8px; background: var(--c-yellow); color: #12141a; font-family: var(--font-display); font-weight: 800; font-size: 16px; display: flex; align-items: center; justify-content: center; }
+.rules b { color: var(--ink); font-size: 15px; }
+.rulespanel { border-color: color-mix(in srgb, var(--c-yellow) 60%, var(--line)); }
+.rulecard { border-radius: 12px; padding: 8px 12px; background: color-mix(in srgb, var(--c-yellow) 22%, var(--surface)); border: 1.5px solid color-mix(in srgb, var(--c-yellow) 70%, transparent); display: flex; flex-direction: column; gap: 2px; }
+.rulecard b { font-family: var(--font-display); font-size: 18px; }
+.rulecard p:not(.sub) { font-size: 14px; }
 #fx { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 50; }
 
 @media (prefers-reduced-motion: reduce) { .tile { transition: none; } .toast { transition: none; } .btn.nudge { animation: none; } }
@@ -230,6 +238,11 @@ p { margin: 0; }
 
   <div class="board" id="board" aria-label="Bảng chặng"></div>
   <p class="note" id="homeNote" role="status" aria-live="polite"></p>
+
+  <section class="panel rulespanel" aria-label="Quy tắc vàng">
+    <h2>⭐ Quy tắc vàng</h2>
+    <ol class="rules" id="rules"></ol>
+  </section>
 
   <section class="panel" id="who" aria-label="Người học"></section>
 
@@ -830,12 +843,37 @@ var Core = (function () {
     'c7-twist': 'Xong khi: ô vàng ở góc trên bên phải của mặt trước quay lên trên.',
     'c7-next': 'Xong khi: một viên góc chưa xong nằm ở góc trên bên phải của mặt trước.', 'c7-align': 'Xong khi: cả 6 mặt đúng màu.'
   };
+  // ---- quy tắc vàng: nhắc con cách học, không phải luật chơi ----
+  var RULES = [
+    ['Vàng trên, trắng dưới', 'Luôn cầm khối như vậy. Ô giữa không bao giờ đổi chỗ: ô giữa màu gì, cả mặt về màu ấy.'],
+    ['Mỗi lần một bước nhỏ', 'Không cần nhìn cả khối. Xong bước này rồi mới sang bước sau.'],
+    ['Sai không sao, cứ thử lại', 'Ai học rubik cũng xoay sai nhiều lần. Có nút Lùi một bước để sửa.'],
+    ['Bí thì bấm Gợi ý nhẹ', 'Xin gợi ý không phải là thua. Vẫn được tính là tự làm.'],
+    ['Làm cho hết công thức', 'Đã bắt đầu thì làm đến hết, đừng dừng giữa chừng. Lộn xộn giữa chừng là bình thường.'],
+    ['Chậm mà đúng', 'Không ai bấm giờ cả. Làm nhiều lần, tay sẽ tự nhớ.'],
+    ['Mỗi ngày một chút', 'Mỗi ngày 10–15 phút. Làm được trên máy rồi thì thử trên khối thật.']
+  ];
+  // quy tắc hợp với từng chặng (số thứ tự trong RULES)
+  var STAGE_RULE = [null, 0, 1, 2, 3, 5, 6, 4];
+  function rulesList(cls) {
+    var ol = el('ol', 'rules' + (cls ? ' ' + cls : ''));
+    RULES.forEach(function (r) { var li = el('li'); li.appendChild(el('b', '', r[0])); li.appendChild(el('span', '', r[1])); ol.appendChild(li); });
+    return ol;
+  }
+  function ruleCard(i) {
+    var w = el('div', 'rulecard');
+    w.appendChild(el('p', 'sub', '⭐ Quy tắc vàng số ' + (i + 1)));
+    w.appendChild(el('b', '', RULES[i][0]));
+    w.appendChild(el('p', '', RULES[i][1]));
+    return w;
+  }
   var INTRO = [
     ['Ô giữa đứng yên', 'Ô chính giữa mỗi mặt gọi là ô giữa. Nó không bao giờ đổi chỗ. Ô giữa màu gì, cả mặt phải về màu ấy. Luôn cầm khối: vàng ở trên, trắng ở dưới.', 'c'],
     ['Viên cạnh và viên góc', 'Viên cạnh có 2 màu, viên góc có 3 màu (đang viền hồng). Giải rubik là đưa từng viên về đúng chỗ.', 'p'],
     ['Cách xoay', 'Vuốt ngón tay trên khối, hoặc bấm nút bên dưới. Chỉ xoay lớp ngoài, lớp giữa đứng yên. Bấm thử nhé!', ''],
     ['Nhìn mặt sau', 'Bấm Nhìn quanh, rồi kéo trên khối để xem mọi phía. Bấm Xong để về hướng chính.', 'v'],
-    ['Mỗi chặng 4 bước', 'Xem máy làm mẫu → Làm theo mũi tên hồng → Tự làm → Làm lại trên khối thật. Sai không sao, cứ thử lại!', '']
+    ['Mỗi chặng 4 bước', 'Xem máy làm mẫu → Làm theo mũi tên hồng → Tự làm → Làm lại trên khối thật. Sai không sao, cứ thử lại!', ''],
+    ['Quy tắc vàng', 'Nhớ 7 điều này là học tốt:', 'r']
   ];
   var REALCHK = [null,
     ['Lật khối lên nhìn mặt đáy: có một chữ thập màu trắng.', 'Nhìn 4 mặt bên: màu của mỗi viên cạnh trắng giống ô giữa ngay trên nó.'],
@@ -1598,6 +1636,7 @@ var Core = (function () {
     if (pg[2] === 'v') { R.pose(1.0, -1.0); setTimeout(function () { if (S.mode === 'intro' && S.introPage === pgi) R.pose(0, 0); }, 2200); } else R.pose(0, 0);
     c.appendChild(el('p', 'sub', 'Làm quen với khối, trang ' + (S.introPage + 1) + '/' + INTRO.length));
     c.appendChild(el('h3', '', pg[0])); c.appendChild(el('p', '', pg[1]));
+    if (pg[2] === 'r') c.appendChild(rulesList());
     var row = el('div', 'btns');
     if (S.introPage > 0) row.appendChild(btn('‹ Trước', 'quiet', function () { S.introPage--; render(); }));
     if (S.introPage < INTRO.length - 1) row.appendChild(btn('Tiếp ›', 'primary', function () { S.introPage++; render(); }));
@@ -1722,6 +1761,7 @@ var Core = (function () {
       // trang mở đầu: cho xem kết quả trước, rồi mới vào bước 1
       c.appendChild(goalCard(k, 'Khối lớn ở trên là khối khi xong chặng này.', k <= 3 ? 'Ô xám: chưa cần để ý.' : ''));
       c.appendChild(el('p', 'bigstep plain', 'Chặng này có ' + n + ' bước nhỏ. Mình đi từng bước một nhé!'));
+      c.appendChild(ruleCard(STAGE_RULE[k]));
       var r0 = el('div', 'btns'); r0.appendChild(btn('Bắt đầu bước 1 ›', 'primary', function () { goStep(0); })); c.appendChild(r0);
       c.appendChild(allLink);
       return;
@@ -1917,6 +1957,7 @@ var Core = (function () {
 
   // ================= gắn sự kiện =================
   (function init() {
+    $('#rules').replaceWith(rulesList());
     var pad = $('#pad');
     PAD.forEach(function (p) {
       var b = el('button', 'key'); b.type = 'button'; b.dataset.mv = p[0]; b.setAttribute('aria-label', p[3]); b.title = p[3];
