@@ -1,0 +1,1799 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rubik 7 Chặng</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Be+Vietnam+Pro:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  /* Bố cục: mỗi màn hình là một tấm nhựa đen của khối rubik, các phần giao diện là những ô dán màu trên đó */
+  --bg: #eceff4;
+  --surface: #ffffff;
+  --ink: #12141a;
+  --muted: #586074;
+  --line: #d3d8e2;
+  --board: #12141a;
+  --accent: #1f5fd6;
+  --accent-ink: #ffffff;
+  --glow: #ffffff;
+  --c-white: #f6f6f1;
+  --c-yellow: #ffd21a;
+  --c-green: #16a34a;
+  --c-blue: #2563eb;
+  --c-orange: #ff7a1a;
+  --c-red: #dc2626;
+  --c-lock: #2b2f39;
+  --arrow: #ff2d95;
+  --ok: #15803d;
+  --font-display: 'Baloo 2', 'Be Vietnam Pro', system-ui, sans-serif;
+  --font-body: 'Be Vietnam Pro', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d0f14; --surface: #181b23; --ink: #f0f2f7; --muted: #9aa3b6; --line: #2a2f3b;
+    --board: #000000; --accent: #6d9bff; --accent-ink: #0d0f14; --glow: #262b38; --ok: #4ade80; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0d0f14; --surface: #181b23; --ink: #f0f2f7; --muted: #9aa3b6; --line: #2a2f3b;
+  --board: #000000; --accent: #6d9bff; --accent-ink: #0d0f14; --glow: #262b38; --ok: #4ade80; color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 16px; line-height: 1.5; -webkit-text-size-adjust: 100%; }
+button { font: inherit; color: inherit; cursor: pointer; }
+button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; margin: 0; line-height: 1.1; }
+p { margin: 0; }
+[hidden] { display: none !important; }
+
+/* ---------- bảng chặng ---------- */
+#home { max-width: 560px; margin: 0 auto; padding: 28px 16px 40px; display: flex; flex-direction: column; gap: 22px; }
+.masthead { display: flex; flex-direction: column; gap: 6px; }
+.masthead h1 { font-size: clamp(44px, 13vw, 64px); font-weight: 800; letter-spacing: -0.02em; }
+.masthead h1 span { display: inline-block; background: var(--c-yellow); color: #12141a; padding: 0 12px 2px; border-radius: 12px; transform: rotate(-2deg); }
+.lede { color: var(--muted); max-width: 34ch; }
+
+.board { background: var(--board); border-radius: 26px; padding: 10px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; box-shadow: 0 18px 40px -18px rgba(0, 0, 0, .55); }
+.tile { aspect-ratio: 1; border: 0; border-radius: 14px; padding: 8px 9px; display: flex; flex-direction: column; justify-content: space-between; text-align: left; background: var(--c-white); color: #12141a; min-width: 0; transition: transform .12s ease; }
+.tile:active { transform: scale(.96); }
+.tile .num { font-family: var(--font-display); font-weight: 800; font-size: clamp(30px, 10vw, 44px); line-height: .9; }
+.tile .nm { font-size: clamp(11px, 3.3vw, 14px); font-weight: 600; line-height: 1.15; overflow-wrap: anywhere; }
+.tile .meta { font-size: 11px; font-weight: 600; letter-spacing: .02em; min-height: 14px; display: flex; gap: 3px; align-items: center; }
+.tile.doing { background: var(--c-yellow); }
+.tile.done { background: var(--c-green); color: #fff; }
+.tile.exam { background: var(--c-blue); color: #fff; }
+.tile.exam.done { background: var(--c-orange); color: #12141a; }
+.tile.lock { background: var(--c-lock); color: #8d95a8; cursor: not-allowed; }
+.dot { width: 9px; height: 9px; border-radius: 3px; border: 1.5px solid currentColor; display: inline-block; }
+.dot.on { background: currentColor; }
+
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.panel h2 { font-size: 22px; font-weight: 700; }
+.whoname { font-family: var(--font-display); font-size: 26px; font-weight: 700; line-height: 1.1; }
+.winp { flex: 1 1 150px; min-width: 0; border: 2px solid var(--line); border-radius: 12px; padding: 8px 12px; font: inherit; font-size: 16px; background: var(--bg); color: var(--ink); }
+.reviews { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.rev { border: 1.5px solid var(--line); border-radius: 12px; padding: 9px 10px; background: transparent; text-align: left; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.rev b { font-family: var(--font-display); font-size: 18px; line-height: 1.1; }
+.rev span { font-size: 12px; color: var(--muted); }
+.rev.due { border-color: var(--c-orange); background: color-mix(in srgb, var(--c-orange) 14%, transparent); }
+.rev.ok { border-color: var(--c-green); }
+.rev.ok span { color: var(--c-green); font-weight: 600; }
+.rev:disabled { cursor: default; opacity: .75; }
+.steps3 { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; }
+.steps3 li { display: grid; grid-template-columns: 104px 1fr; gap: 10px; align-items: baseline; }
+.steps3 b { font-family: var(--font-display); font-size: 18px; }
+.tip { color: var(--muted); font-size: 14px; }
+.foot { display: flex; flex-wrap: wrap; gap: 8px 16px; }
+.link { background: none; border: 0; padding: 4px 0; color: var(--muted); font-size: 13px; text-decoration: underline; text-underline-offset: 3px; }
+
+.btn { border: 2px solid var(--ink); background: var(--surface); border-radius: 12px; padding: 9px 14px; font-weight: 600; font-size: 15px; line-height: 1.2; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn.quiet { border-color: var(--line); color: var(--muted); }
+.btn:disabled { opacity: .45; cursor: default; }
+.btns { display: flex; flex-wrap: wrap; gap: 8px; }
+
+/* ---------- màn hình học ---------- */
+#play { height: 100%; min-height: 560px; display: flex; flex-direction: column; max-width: 1080px; margin: 0 auto; }
+.bar { display: flex; align-items: center; gap: 10px; padding: 10px 16px 6px; }
+.back { border: 0; background: none; padding: 6px 8px 6px 0; font-weight: 600; color: var(--muted); white-space: nowrap; }
+.ttl { flex: 1; min-width: 0; font-family: var(--font-display); font-weight: 700; font-size: 20px; line-height: 1.1; }
+.stat { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; padding: 0 16px 8px; }
+.tab { border: 2px solid var(--line); background: transparent; border-radius: 10px; padding: 7px 2px; font-weight: 600; font-size: 13px; color: var(--muted); min-width: 0; }
+.rchk { display: flex; gap: 10px; align-items: flex-start; font-size: 15px; cursor: pointer; }
+.rchk input { flex: 0 0 auto; width: 22px; height: 22px; margin: 1px 0 0; accent-color: var(--ok); }
+.tab[aria-selected="true"] { background: var(--ink); border-color: var(--ink); color: var(--bg); }
+
+.work { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.cubewrap { position: relative; flex: 0 0 42%; min-height: 220px; background: radial-gradient(closest-side, var(--glow), transparent 100%); }
+#cv { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+.peek { position: absolute; left: 16px; bottom: 4px; font-size: 11px; color: var(--muted); pointer-events: none; }
+.lookbtn { position: absolute; right: 16px; bottom: 6px; border: 2px solid var(--ink); background: var(--surface); border-radius: 999px; padding: 5px 12px; font-size: 13px; font-weight: 600; }
+.lookbtn.on { background: var(--arrow); border-color: var(--arrow); color: #fff; }
+.toast { position: absolute; left: 50%; top: 8px; transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 7px 14px; border-radius: 16px; font-size: 13px; font-weight: 600; line-height: 1.35; opacity: 0; transition: opacity .2s; pointer-events: none; width: max-content; max-width: min(92%, 420px); text-align: center; text-wrap: balance; }
+.toast.on { opacity: 1; }
+
+.side { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.coach { position: relative; flex: 1; min-height: 0; overflow-y: auto; padding: 4px 16px 10px; display: flex; flex-direction: column; gap: 10px; }
+.coach h3 { font-size: 20px; font-weight: 700; }
+.coach .sub { font-size: 13px; color: var(--muted); font-weight: 600; }
+.coach p, .coach li { max-width: 62ch; }
+.how { margin: 0; padding: 0; list-style: none; counter-reset: how; display: flex; flex-direction: column; gap: 7px; font-size: 15px; }
+.how li { counter-increment: how; }
+.how li::before { content: "Bước " counter(how) ". "; font-weight: 700; }
+.ifs { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 5px; font-size: 14px; color: var(--muted); }
+.ill { cursor: pointer; border-radius: 8px; padding: 3px 8px; margin: 0 -8px; }
+.ill::after { content: " ▸"; color: var(--arrow); font-weight: 700; }
+.ill:hover { background: color-mix(in srgb, var(--arrow) 8%, transparent); }
+.ill.on { background: color-mix(in srgb, var(--arrow) 13%, transparent); box-shadow: inset 4px 0 0 var(--arrow); color: var(--ink); }
+.fbox.ill { margin: 0; padding: 8px 10px; }
+.fbox.ill::after { content: none; }
+.fbox.ill b::after { content: " ▸"; color: var(--arrow); }
+.gg.ill { margin: 0; padding: 2px 6px; margin-left: -6px; }
+.rchk .ill { margin: 0; padding: 0 6px; }
+.tap { font-size: 13px; font-weight: 600; color: var(--arrow); }
+.gcard { display: flex; gap: 10px; align-items: flex-start; border: 1px solid var(--line); border-radius: 14px; padding: 8px 10px; background: var(--surface); }
+.thumb { flex: 0 0 auto; border-radius: 10px; background: var(--bg); }
+.gtxt { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.gg { font-size: 14px; font-weight: 600; line-height: 1.35; }
+.gtask { font-size: 13px; line-height: 1.35; }
+.gprog { font-size: 14px; font-weight: 600; color: var(--ok); }
+.schips { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.sclab { font-size: 12px; font-weight: 600; color: var(--muted); margin-right: 2px; }
+.sc { border: 1.5px solid var(--line); border-radius: 8px; padding: 0 7px; font-size: 12px; font-weight: 600; color: var(--muted); }
+.sc.ok { border-color: var(--ok); color: var(--ok); }
+.sc.cur { border-color: var(--ink); color: var(--ink); }
+.segs { margin: 0; padding: 0; list-style: none; counter-reset: seg; display: flex; flex-direction: column; gap: 6px; }
+.segs li { counter-increment: seg; }
+.segs li::before { content: "Bước " counter(seg) ". "; font-weight: 700; }
+.segs li { border-left: 4px solid var(--line); padding: 2px 0 2px 10px; font-size: 15px; color: var(--muted); }
+.segs li.cur { border-left-color: var(--arrow); color: var(--ink); font-weight: 500; }
+.segs li.done { color: var(--ok); border-left-color: var(--ok); }
+.segs li.done::before { content: "✓ Bước " counter(seg) ". "; }
+.check { border: 1.5px solid var(--ink); border-radius: 12px; padding: 8px 10px; font-size: 14px; font-weight: 500; background: var(--surface); }
+.chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; align-items: center; }
+.chip { border: 1.5px solid var(--line); border-radius: 8px; padding: 2px 7px; font-size: 13px; font-weight: 600; color: var(--ink); background: var(--surface); white-space: nowrap; }
+.chip.past { opacity: .4; }
+.chip.now { border-color: var(--arrow); background: var(--arrow); color: #fff; }
+.times { font-size: 12px; font-weight: 600; color: var(--muted); }
+.fbox { border: 1px solid var(--line); border-radius: 12px; padding: 8px 10px; background: var(--surface); }
+.fbox b { font-family: var(--font-display); font-size: 17px; }
+.cases { display: flex; flex-wrap: wrap; gap: 6px; }
+.case { border: 2px solid var(--ink); background: var(--surface); border-radius: 999px; padding: 5px 12px; font-size: 14px; font-weight: 600; }
+.note { font-size: 13px; color: var(--muted); }
+.goal { border-left: 4px solid var(--c-green); padding-left: 10px; }
+.result { text-align: left; display: flex; flex-direction: column; gap: 8px; }
+.result h3 { font-size: 30px; font-weight: 800; }
+
+.pad { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 5px; padding: 6px 16px 12px; border-top: 1px solid var(--line); background: var(--bg); }
+.key { border: 2px solid var(--ink); background: var(--surface); border-radius: 10px; padding: 3px 0 4px; display: flex; flex-direction: column; align-items: center; line-height: 1.1; min-width: 0; }
+.key i { font-style: normal; font-size: 19px; font-weight: 700; }
+.key span { font-size: 10.5px; font-weight: 600; white-space: nowrap; }
+.key.exp { background: var(--arrow); border-color: var(--arrow); color: #fff; }
+.key:disabled { opacity: .35; cursor: default; }
+
+@media (min-width: 820px) {
+  .work { flex-direction: row; gap: 8px; padding: 0 16px 16px; }
+  .cubewrap { flex: 1 1 54%; min-width: 0; }
+  .side { flex: 1 1 46%; min-width: 0; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); overflow: hidden; }
+  .coach { padding-top: 16px; }
+  .pad { background: var(--surface); }
+  .key i { font-size: 22px; }
+  .key span { font-size: 12px; }
+  .key { padding: 6px 0 7px; }
+}
+@media (prefers-reduced-motion: reduce) { .tile { transition: none; } .toast { transition: none; } }
+</style>
+</head>
+<body>
+<div id="home">
+  <header class="masthead">
+    <h1>Rubik <span>7 chặng</span></h1>
+    <p class="lede">Học lần lượt từ chặng 1 đến chặng 7. Học xong, bạn giải được mọi khối rubik 3×3.</p>
+  </header>
+
+  <div class="board" id="board" aria-label="Bảng chặng"></div>
+  <p class="note" id="homeNote" role="status" aria-live="polite"></p>
+
+  <section class="panel" id="who" aria-label="Người học"></section>
+
+  <section class="panel">
+    <h2>Ôn để nhớ lâu</h2>
+    <div class="reviews" id="reviews"></div>
+    <div class="btns"><button class="btn" id="freeBtn" type="button">Luyện tự do</button></div>
+  </section>
+
+  <section class="panel">
+    <h2>Mỗi chặng có 4 bước</h2>
+    <ol class="steps3">
+      <li><b>1. Xem</b><span>Trên máy. Máy làm mẫu cho bạn xem. Chưa cần khối thật.</span></li>
+      <li><b>2. Làm theo</b><span>Trên máy. Bạn xoay khối trên máy theo mũi tên hồng.</span></li>
+      <li><b>3. Tự làm</b><span>Trên máy. Bạn tự giải. Đúng 1 khối, không cần gợi ý, là qua chặng. Đúng 3 khối liên tiếp thì được sao ★.</span></li>
+      <li><b>4. Khối thật</b><span>Đặt máy xuống. Làm lại chặng đó trên khối rubik thật, rồi tự so với hình kết quả.</span></li>
+    </ol>
+    <p class="tip">Khối trên máy do máy tự xáo, nên nó không giống khối thật của bạn. Các bước xoay sẽ khác nhau, nhưng cách làm giống hệt.</p>
+  </section>
+
+  <footer class="foot">
+    <button class="link" id="unlockAll" type="button">Phụ huynh: mở khóa mọi chặng</button>
+    <button class="link" id="resetAll" type="button">Xóa tiến độ</button>
+  </footer>
+</div>
+
+<div id="play" hidden>
+  <header class="bar">
+    <button class="back" id="back" type="button" aria-label="Về bảng chặng">‹ Bảng</button>
+    <div class="ttl" id="ttl"></div>
+    <div class="stat" id="stat"></div>
+  </header>
+  <nav class="tabs" id="tabs" role="tablist" aria-label="Bốn bước của chặng"></nav>
+  <div class="work">
+    <div class="cubewrap">
+      <canvas id="cv" aria-label="Khối rubik 3D. Vuốt trên khối để xoay."></canvas>
+      <div class="toast" id="toast" role="status"></div>
+      <p class="peek" id="peek">Lớp giữa không xoay được.</p>
+      <button class="lookbtn" id="look" type="button" aria-pressed="false">Nhìn quanh</button>
+    </div>
+    <div class="side">
+      <section class="coach" id="coach" aria-live="polite"></section>
+      <div class="pad" id="pad" aria-label="Nút xoay"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* Lõi khối rubik + bộ giải từng tầng (không dùng DOM) */
+var Core = (function () {
+  'use strict';
+
+  // ---------- đại số nhỏ ----------
+  function rotMat(axis, q) {
+    q = ((q % 4) + 4) % 4;
+    var c = [1, 0, -1, 0][q], s = [0, 1, 0, -1][q];
+    if (axis === 0) return [1, 0, 0, 0, c, -s, 0, s, c];
+    if (axis === 1) return [c, 0, s, 0, 1, 0, -s, 0, c];
+    return [c, -s, 0, s, c, 0, 0, 0, 1];
+  }
+  function mmul(a, b) {
+    var r = new Array(9);
+    for (var i = 0; i < 3; i++) for (var j = 0; j < 3; j++)
+      r[i * 3 + j] = a[i * 3] * b[j] + a[i * 3 + 1] * b[3 + j] + a[i * 3 + 2] * b[6 + j];
+    return r;
+  }
+  function mvec(m, v) {
+    return [m[0] * v[0] + m[1] * v[1] + m[2] * v[2], m[3] * v[0] + m[4] * v[1] + m[5] * v[2], m[6] * v[0] + m[7] * v[1] + m[8] * v[2]];
+  }
+  function mTvec(m, v) {
+    return [m[0] * v[0] + m[3] * v[1] + m[6] * v[2], m[1] * v[0] + m[4] * v[1] + m[7] * v[2], m[2] * v[0] + m[5] * v[1] + m[8] * v[2]];
+  }
+  function meq(a, b) { for (var i = 0; i < 9; i++) if (a[i] !== b[i]) return false; return true; }
+  function veq(a, b) { return a[0] === b[0] && a[1] === b[1] && a[2] === b[2]; }
+  var I3 = [1, 0, 0, 0, 1, 0, 0, 0, 1];
+
+  // ---------- khối ----------
+  var HOMES = [];
+  for (var x = -1; x <= 1; x++) for (var y = -1; y <= 1; y++) for (var z = -1; z <= 1; z++) HOMES.push([x, y, z]);
+  function key(p) { return (p[0] + 1) * 9 + (p[1] + 1) * 3 + (p[2] + 1); }
+
+  function newCube() {
+    return { m: HOMES.map(function () { return I3.slice(); }), p: HOMES.map(function (h) { return h.slice(); }), at: HOMES.map(function (h, i) { return i; }), g: I3.slice() };
+  }
+  function clone(s) {
+    return { m: s.m.map(function (a) { return a.slice(); }), p: s.p.map(function (a) { return a.slice(); }), at: s.at.slice(), g: s.g.slice() };
+  }
+  // [trục, lớp (null = cả khối), số phần tư vòng theo quy tắc bàn tay phải]
+  var MOVES = {
+    "R": [0, 1, -1], "R'": [0, 1, 1], "L": [0, -1, 1], "L'": [0, -1, -1],
+    "U": [1, 1, -1], "U'": [1, 1, 1], "D": [1, -1, 1], "D'": [1, -1, -1],
+    "F": [2, 1, -1], "F'": [2, 1, 1], "B": [2, -1, 1], "B'": [2, -1, -1],
+    "y": [1, null, -1], "y'": [1, null, 1]
+  };
+  function inv(n) { return n.charAt(n.length - 1) === "'" ? n.slice(0, -1) : n + "'"; }
+  function move(s, name) {
+    var d = MOVES[name], ax = d[0], layer = d[1], R = rotMat(ax, d[2]);
+    for (var i = 0; i < 27; i++) {
+      if (layer === null || s.p[i][ax] === layer) { s.m[i] = mmul(R, s.m[i]); s.p[i] = mvec(R, s.p[i]); }
+    }
+    if (layer === null) s.g = mmul(R, s.g);
+    for (i = 0; i < 27; i++) s.at[key(s.p[i])] = i;
+    return s;
+  }
+  function apply(s, moves) { for (var i = 0; i < moves.length; i++) move(s, moves[i]); return s; }
+  function run(s, moves) { return apply(clone(s), moves); }
+  function parse(str) { return str.trim().split(/\s+/).filter(Boolean); }
+
+  // màu: Y vàng (trên), W trắng (dưới), G lục (trước), B lam (sau), O cam (phải), R đỏ (trái)
+  function dirColor(d) {
+    if (d[1] === 1) return 'Y'; if (d[1] === -1) return 'W';
+    if (d[2] === 1) return 'G'; if (d[2] === -1) return 'B';
+    if (d[0] === 1) return 'O'; return 'R';
+  }
+  function colorAt(s, pos, dir) { var i = s.at[key(pos)]; return dirColor(mTvec(s.m[i], dir)); }
+  function centerColor(s, dir) { return dirColor(mTvec(s.g, dir)); }
+
+  var V = { U: [0, 1, 0], D: [0, -1, 0], F: [0, 0, 1], B: [0, 0, -1], R: [1, 0, 0], L: [-1, 0, 0] };
+  function P(name) { var p = [0, 0, 0]; for (var i = 0; i < name.length; i++) { var v = V[name.charAt(i)]; p[0] += v[0]; p[1] += v[1]; p[2] += v[2]; } return p; }
+  function C(s, posName, face) { return colorAt(s, P(posName), V[face]); }
+
+  // nhóm viên theo vị trí gốc
+  function homesWhere(fn) { var r = []; HOMES.forEach(function (h, i) { if (fn(h)) r.push(i); }); return r; }
+  function nz(h) { return Math.abs(h[0]) + Math.abs(h[1]) + Math.abs(h[2]); }
+  var G = {
+    wEdges: homesWhere(function (h) { return h[1] === -1 && nz(h) === 2; }),
+    wCorners: homesWhere(function (h) { return h[1] === -1 && nz(h) === 3; }),
+    mEdges: homesWhere(function (h) { return h[1] === 0 && nz(h) === 2; }),
+    yEdges: homesWhere(function (h) { return h[1] === 1 && nz(h) === 2; }),
+    yCorners: homesWhere(function (h) { return h[1] === 1 && nz(h) === 3; }),
+    centers: homesWhere(function (h) { return nz(h) === 1; }),
+    all: homesWhere(function (h) { return nz(h) >= 2; })
+  };
+  function ok(s, i) { return meq(s.m[i], s.g); }
+  function allOk(s, arr) { for (var k = 0; k < arr.length; k++) if (!ok(s, arr[k])) return false; return true; }
+
+  // ---------- điều kiện xong từng chặng ----------
+  function s1(s) { return allOk(s, G.wEdges); }
+  function s2(s) { return s1(s) && allOk(s, G.wCorners); }
+  function f2l(s) { return s2(s) && allOk(s, G.mEdges); }
+  function yUp(s, i) { return veq(mvec(s.m[i], [0, 1, 0]), [0, 1, 0]); }
+  function s4(s) { return f2l(s) && G.yEdges.every(function (i) { return yUp(s, i); }); }
+  function s5(s) { return f2l(s) && allOk(s, G.yEdges); }
+  function inPlace(s, i) { return veq(s.p[i], mvec(s.g, HOMES[i])); }
+  function s6(s) { return s5(s) && G.yCorners.every(function (i) { return inPlace(s, i); }); }
+  function solved(s) { return allOk(s, G.all); }
+  function stageIndex(s) {
+    if (!s1(s)) return 0; if (!s2(s)) return 1; if (!f2l(s)) return 2; if (!s4(s)) return 3;
+    if (!s5(s)) return 4; if (!s6(s)) return 5; if (!solved(s)) return 6; return 7;
+  }
+
+  // ---------- công thức ----------
+  var FORMULAS = {
+    f1: { name: 'Thang máy', moves: parse("R U R' U'") },
+    f3r: { name: 'Gửi sang phải', moves: parse("U R U' R' U' F' U F") },
+    f3l: { name: 'Gửi sang trái', moves: parse("U' L' U L U F U' F'") },
+    f4: { name: 'Chữ thập vàng', moves: parse("F R U R' U' F'") },
+    f5: { name: 'Đổi cạnh', moves: parse("R U R' U R U U R'") },
+    f6: { name: 'Đổi góc', moves: parse("U R U' L' U R' U' L") },
+    f7: { name: 'Thang máy ngược', moves: parse("R' D' R D") }
+  };
+  function rep(arr, n) { var r = []; for (var i = 0; i < n; i++) r = r.concat(arr); return r; }
+
+  var UOPT = [[], ['U'], ["U'"], ['U', 'U']];
+  var YOPT = [[], ['y'], ["y'"], ['y', 'y']];
+  var SIDES = ['F', 'R', 'B', 'L'];
+  function firstOpt(s, opts, pred) {
+    for (var k = 0; k < opts.length; k++) { var t = run(s, opts[k]); if (pred(t)) return { mv: opts[k], s: t }; }
+    return null;
+  }
+  function seg(t, moves, f, reps) { return { t: t, moves: moves.slice(), f: f || null, reps: reps || 0 }; }
+  function mk(stage, id, title, segs, focus) {
+    segs = segs.filter(function (g) { return g.moves.length > 0; });
+    return { stage: stage, id: id, title: title, segs: segs, focus: focus || [] };
+  }
+  function cost(pl) { var n = 0; pl.segs.forEach(function (g) { n += g.moves.length; }); return n; }
+  function best(list) { var b = null; list.forEach(function (p) { if (p && (!b || cost(p) < cost(b))) b = p; }); return b; }
+
+  // ---------- chặng 1: chữ thập trắng (qua bông cúc) ----------
+  function petalAt(s, slot) { return colorAt(s, P(slot), V.U) === 'W'; }
+  function planCross(s) {
+    var info = G.wEdges.map(function (i) {
+      var w = mvec(s.m[i], [0, -1, 0]);
+      return { i: i, w: w, petal: s.p[i][1] === 1 && w[1] === 1, done: ok(s, i) };
+    });
+    var pending = info.filter(function (e) { return !e.done && !e.petal; });
+    if (pending.length === 0) {
+      // thả từng cánh hoa xuống
+      var cands = [];
+      UOPT.forEach(function (u) {
+        var t = run(s, u);
+        SIDES.forEach(function (X) {
+          var slot = 'U' + X;
+          if (colorAt(t, P(slot), V.U) === 'W' && colorAt(t, P(slot), V[X]) === centerColor(t, V[X])) {
+            var i = t.at[key(P(slot))];
+            var yy = firstOpt(t, YOPT, function (q) { return veq(q.p[i], [0, 1, 1]); });
+            cands.push(mk(1, 'c1-drop', 'Thả cánh hoa xuống đáy', [
+              seg('Xoay tầng trên đến khi màu ở mặt bên của một cánh hoa giống ô giữa ngay dưới nó.', u),
+              seg('Xoay cả khối để cánh hoa đó quay về phía bạn.', yy.mv),
+              seg('Xoay mặt trước 2 lần. Cánh hoa xuống đáy, đúng chỗ.', ['F', 'F'])
+            ], [i]));
+          }
+        });
+      });
+      return best(cands);
+    }
+    var plans = pending.map(function (e) {
+      var i = e.i, segs = [], t, id;
+      function freeU(st, slot, where) {
+        var o = firstOpt(st, UOPT, function (q) { return !petalAt(q, slot); });
+        segs.push(seg('Dọn chỗ: xoay tầng trên đến khi ô ' + where + ' không phải màu trắng.', o.mv));
+        return o.s;
+      }
+      if (e.w[1] === -1) {
+        var yy = firstOpt(s, YOPT, function (q) { return veq(q.p[i], [0, -1, 1]); });
+        segs.push(seg('Viên cạnh này có ô trắng quay xuống đáy. Xoay cả khối để nó nằm ở phía trước.', yy.mv));
+        t = freeU(yy.s, 'UF', 'phía trước của mặt trên');
+        segs.push(seg('Xoay mặt trước 2 lần. Ô trắng lật lên mặt trên.', ['F', 'F']));
+        id = 'c1-d';
+      } else {
+        var y2 = firstOpt(s, YOPT, function (q) { return mvec(q.m[i], [0, -1, 0])[2] === 1; });
+        segs.push(seg('Xoay cả khối để ô trắng quay về phía bạn.', y2.mv));
+        t = y2.s;
+        var p = t.p[i];
+        if (p[0] === 1) {
+          t = freeU(t, 'UR', 'bên phải của mặt trên');
+          segs.push(seg('Ô trắng ở bên phải của mặt trước. Đẩy cột phải lên.', ['R']));
+          id = 'c1-fr';
+        } else if (p[0] === -1) {
+          t = freeU(t, 'UL', 'bên trái của mặt trên');
+          segs.push(seg('Ô trắng ở bên trái của mặt trước. Đẩy cột trái lên.', ["L'"]));
+          id = 'c1-fl';
+        } else if (p[1] === 1) {
+          segs.push(seg('Ô trắng ở hàng trên của mặt trước. Xoay mặt trước theo chiều kim đồng hồ. Ô trắng chạy sang bên phải.', ['F']));
+          t = run(t, ['F']);
+          t = freeU(t, 'UR', 'bên phải của mặt trên');
+          segs.push(seg('Đẩy cột phải lên.', ['R']));
+          id = 'c1-uf';
+        } else {
+          t = freeU(t, 'UF', 'phía trước của mặt trên');
+          segs.push(seg('Ô trắng ở hàng dưới của mặt trước. Xoay mặt trước theo chiều kim đồng hồ. Ô trắng chạy sang bên trái.', ['F']));
+          t = run(t, ['F']);
+          t = freeU(t, 'UL', 'bên trái của mặt trên');
+          segs.push(seg('Đẩy cột trái lên.', ["L'"]));
+          id = 'c1-df';
+        }
+      }
+      return mk(1, id, 'Làm bông cúc: đưa viên cạnh trắng lên mặt trên', segs, [i]);
+    });
+    return best(plans);
+  }
+
+  // ---------- chặng 2: góc trắng ----------
+  function planCorners(s) {
+    var un = G.wCorners.filter(function (i) { return !ok(s, i); });
+    var top = un.filter(function (i) { return s.p[i][1] === 1; });
+    var f1 = FORMULAS.f1.moves;
+    if (top.length) {
+      return best(top.map(function (i) {
+        var yy = firstOpt(s, YOPT, function (q) { return veq(mvec(q.g, HOMES[i]), [1, -1, 1]); });
+        var uu = firstOpt(yy.s, UOPT, function (q) { return veq(q.p[i], [1, 1, 1]); });
+        var t = uu.s, n = 0;
+        while (!ok(t, i) && n < 6) { apply(t, f1); n++; }
+        return mk(2, 'c2-top', 'Đưa một viên góc trắng xuống tầng dưới', [
+          seg('Viên góc viền hồng có màu trắng và 2 màu khác. Xoay cả khối để 2 màu đó là ô giữa của mặt trước và mặt phải.', yy.mv),
+          seg('Xoay tầng trên để viên góc về góc trên bên phải của mặt trước.', uu.mv),
+          seg('Làm Thang máy ' + n + ' lần. Viên góc xuống tầng dưới, ô trắng quay xuống đáy.', rep(f1, n), 'f1', n)
+        ], [i]);
+      }));
+    }
+    return best(un.map(function (i) {
+      var yy = firstOpt(s, YOPT, function (q) { return veq(q.p[i], [1, -1, 1]); });
+      if (inPlace(s, i)) {
+        var t = clone(yy.s), n = 0;
+        while (!ok(t, i) && n < 6) { apply(t, f1); n++; }
+        return mk(2, 'c2-twist', 'Viên góc trắng đúng chỗ nhưng ô trắng chưa quay xuống', [
+          seg('Xoay cả khối để viên góc đó về góc dưới bên phải của mặt trước.', yy.mv),
+          seg('Làm Thang máy ' + n + ' lần. Ô trắng sẽ quay xuống đáy.', rep(f1, n), 'f1', n)
+        ], [i]);
+      }
+      return mk(2, 'c2-wrong', 'Viên góc trắng nằm sai chỗ ở tầng dưới', [
+        seg('Xoay cả khối để viên góc đó về góc dưới bên phải của mặt trước.', yy.mv),
+        seg('Làm Thang máy 1 lần. Viên góc sẽ lên tầng trên.', f1, 'f1', 1)
+      ], [i]);
+    }));
+  }
+
+  // ---------- chặng 3: tầng giữa ----------
+  function planMiddle(s) {
+    var un = G.mEdges.filter(function (i) { return !ok(s, i); });
+    var top = un.filter(function (i) { return s.p[i][1] === 1; });
+    if (top.length) {
+      return best(top.map(function (i) {
+        var h = HOMES[i], a = [h[0], 0, 0], b = [0, 0, h[2]];
+        function sideHome(q) { return mvec(q.m[i], a)[1] === 1 ? b : a; }
+        function topHome(q) { return mvec(q.m[i], a)[1] === 1 ? a : b; }
+        var uu = firstOpt(s, UOPT, function (q) { var hs = sideHome(q); return veq(mvec(q.m[i], hs), mvec(q.g, hs)); });
+        var yy = firstOpt(uu.s, YOPT, function (q) { return veq(q.p[i], [0, 1, 1]); });
+        var right = mvec(yy.s.g, topHome(yy.s))[0] === 1;
+        return mk(3, right ? 'c3-right' : 'c3-left', 'Đưa một viên cạnh vào tầng giữa', [
+          seg('Tìm viên cạnh không có màu vàng ở tầng trên. Xoay tầng trên đến khi màu ở mặt bên của nó giống ô giữa ngay dưới.', uu.mv),
+          seg('Xoay cả khối để viên cạnh đó quay về phía bạn.', yy.mv),
+          right
+            ? seg('Màu ở mặt trên của viên cạnh giống ô giữa bên phải. Làm Gửi sang phải.', FORMULAS.f3r.moves, 'f3r', 1)
+            : seg('Màu ở mặt trên của viên cạnh giống ô giữa bên trái. Làm Gửi sang trái.', FORMULAS.f3l.moves, 'f3l', 1)
+        ], [i]);
+      }));
+    }
+    return best(un.map(function (i) {
+      var yy = firstOpt(s, YOPT, function (q) { return veq(q.p[i], [1, 0, 1]); });
+      return mk(3, 'c3-stuck', 'Viên cạnh nằm sai chỗ ở tầng giữa', [
+        seg('Xoay cả khối để viên cạnh đó ở bên phải của mặt trước.', yy.mv),
+        seg('Làm Gửi sang phải 1 lần. Viên cạnh sẽ lên tầng trên.', FORMULAS.f3r.moves, 'f3r', 1)
+      ], [i]);
+    }));
+  }
+
+  // ---------- chặng 4: chữ thập vàng ----------
+  function planYCross(s) {
+    function up(q, X) { return colorAt(q, P('U' + X), V.U) === 'Y'; }
+    var n = SIDES.filter(function (X) { return up(s, X); }).length;
+    var f = FORMULAS.f4.moves, fs = seg('Làm công thức Chữ thập vàng.', f, 'f4', 1);
+    if (n === 0) return mk(4, 'c4-dot', 'Mặt trên chỉ có một chấm vàng', [fs]);
+    if (n === 2) {
+      if ((up(s, 'F') && up(s, 'B')) || (up(s, 'L') && up(s, 'R'))) {
+        var o = firstOpt(s, UOPT, function (q) { return up(q, 'L') && up(q, 'R'); });
+        return mk(4, 'c4-line', 'Mặt trên có một vạch vàng', [seg('Xoay tầng trên để vạch vàng nằm ngang.', o.mv), fs]);
+      }
+      var o2 = firstOpt(s, UOPT, function (q) { return up(q, 'B') && up(q, 'L'); });
+      return mk(4, 'c4-L', 'Mặt trên có chữ L màu vàng', [seg('Xoay tầng trên để chữ L nằm ở góc xa bên trái. Hai đầu chữ L chỉ ra phía sau và sang trái.', o2.mv), fs]);
+    }
+    return null;
+  }
+
+  // ---------- chặng 5: cạnh vàng về đúng mặt ----------
+  function matches(q) { return SIDES.filter(function (X) { return colorAt(q, P('U' + X), V[X]) === centerColor(q, V[X]); }); }
+  function planYEdges(s) {
+    var four = firstOpt(s, UOPT, function (q) { return matches(q).length === 4; });
+    if (four) return mk(5, 'c5-turn', 'Chỉ cần xoay tầng trên', [seg('Xoay tầng trên đến khi cả 4 viên cạnh vàng giống màu ô giữa ngay dưới.', four.mv)]);
+    var f = FORMULAS.f5.moves;
+    function adjacent(m) { return !((m[0] === 'F' && m[1] === 'B') || (m[0] === 'R' && m[1] === 'L')); }
+    var adj = firstOpt(s, UOPT, function (q) { var m = matches(q); return m.length === 2 && adjacent(m); });
+    if (adj) {
+      var yy = firstOpt(adj.s, YOPT, function (q) { var m = matches(q); return m.indexOf('B') >= 0 && m.indexOf('R') >= 0; });
+      return mk(5, 'c5-adj', 'Hai viên cạnh đúng màu nằm cạnh nhau', [
+        seg('Xoay tầng trên đến khi có đúng 2 viên cạnh vàng giống màu ô giữa ngay dưới.', adj.mv),
+        seg('Xoay cả khối để 2 viên đó ở phía sau và bên phải.', yy.mv),
+        seg('Làm công thức Đổi cạnh.', f, 'f5', 1)
+      ]);
+    }
+    var opp = firstOpt(s, UOPT, function (q) { return matches(q).length === 2; });
+    if (!opp) return null;
+    return mk(5, 'c5-opp', 'Hai viên cạnh đúng màu nằm đối diện nhau', [
+      seg('Xoay tầng trên đến khi có đúng 2 viên cạnh vàng giống màu ô giữa ngay dưới.', opp.mv),
+      seg('Làm Đổi cạnh 1 lần. Sau đó 2 viên đúng màu sẽ nằm cạnh nhau.', f, 'f5', 1)
+    ]);
+  }
+
+  // ---------- chặng 6: góc vàng về đúng ô ----------
+  function planYCorners(s) {
+    var good = G.yCorners.filter(function (i) { return inPlace(s, i); });
+    var f = FORMULAS.f6.moves;
+    if (good.length >= 1 && good.length < 4) {
+      var i = good[0];
+      var yy = firstOpt(s, YOPT, function (q) { return veq(q.p[i], [1, 1, 1]); });
+      return mk(6, 'c6-one', 'Có một viên góc vàng đúng chỗ', [
+        seg('Viên góc viền hồng đã đúng chỗ: 3 màu của nó giống 3 ô giữa quanh nó. Xoay cả khối để nó về góc trên bên phải của mặt trước.', yy.mv),
+        seg('Làm công thức Đổi góc. Ba viên góc kia đổi chỗ cho nhau.', f, 'f6', 1)
+      ], [i]);
+    }
+    return mk(6, 'c6-none', 'Chưa có viên góc vàng nào đúng chỗ', [seg('Làm Đổi góc 1 lần. Sau đó sẽ có 1 viên góc đúng chỗ.', f, 'f6', 1)]);
+  }
+
+  // ---------- chặng 7: xoay góc vàng ----------
+  function loose6(s) {
+    if (!f2l(s)) return -1;
+    for (var b = 0; b < 4; b++) { if (s6(run(s, UOPT[b]))) return b; }
+    return -1;
+  }
+  function detect7(s) {
+    var f = FORMULAS.f7.moves;
+    for (var p = 0; p < 4; p++) {
+      var t = clone(s);
+      for (var k = p - 1; k >= 0; k--) move(t, inv(f[k]));
+      for (var m = 0; m < 6; m++) {
+        if (p === 0 && m === 0) continue;
+        if (loose6(run(t, rep(f, (6 - m) % 6))) >= 0) return { p: p, m: m };
+      }
+    }
+    return null;
+  }
+  function ufrUp(q) { return colorAt(q, [1, 1, 1], V.U) === 'Y'; }
+  function allUp(q) { return ['UFR', 'UFL', 'UBR', 'UBL'].every(function (c) { return colorAt(q, P(c), V.U) === 'Y'; }); }
+  function plan7(s, det) {
+    var f = FORMULAS.f7.moves, segs = [], t = clone(s), title = 'Xoay viên góc để ô vàng quay lên trên';
+    if (det.p > 0) {
+      var restMoves = f.slice(det.p);
+      segs.push(seg('Làm nốt công thức Thang máy ngược đang làm dở.', restMoves, 'f7', 0));
+      apply(t, restMoves);
+    }
+    if (!ufrUp(t)) {
+      var n = 0;
+      while (!ufrUp(t) && n < 6) { apply(t, f); n++; }
+      segs.push(seg('Làm Thang máy ngược ' + n + ' lần. Ô vàng ở góc trên bên phải của mặt trước sẽ quay lên trên. Hai tầng dưới lộn xộn là bình thường.', rep(f, n), 'f7', n));
+      return mk(7, 'c7-twist', title, segs, [s.at[key([1, 1, 1])]]);
+    }
+    if (segs.length) return mk(7, 'c7-twist', title, segs);
+    if (allUp(t)) {
+      var a = firstOpt(t, UOPT, solved);
+      if (!a) return null;
+      return mk(7, 'c7-align', 'Bước cuối cùng', [seg('Xoay tầng trên cho khớp màu. Xong!', a.mv)]);
+    }
+    var o = firstOpt(t, [['U'], ["U'"], ['U', 'U']], function (q) { return !ufrUp(q); });
+    return mk(7, 'c7-next', 'Viên góc này xong rồi, sang viên tiếp theo', [
+      seg('Chỉ xoay tầng trên. Đưa một viên góc có ô vàng chưa quay lên về góc trên bên phải của mặt trước. Không xoay cả khối.', o.mv)
+    ]);
+  }
+
+  // ---------- đếm tiến độ trong từng chặng ----------
+  function counts(s) {
+    var petals = 0; G.wEdges.forEach(function (i) { if (s.p[i][1] === 1 && mvec(s.m[i], [0, -1, 0])[1] === 1) petals++; });
+    function n(arr, fn) { return arr.filter(function (i) { return fn(s, i); }).length; }
+    var em = 0; for (var b = 0; b < 4; b++) em = Math.max(em, matches(run(s, UOPT[b])).length);
+    var cu = ['UFR', 'UFL', 'UBR', 'UBL'].filter(function (q) { return colorAt(s, P(q), V.U) === 'Y'; }).length;
+    function down(q, i) { return q.p[i][1] === -1 && mvec(q.m[i], [0, -1, 0])[1] === -1; }
+    return { wd: n(G.wEdges, down), wcd: n(G.wCorners, down), petals: petals, cross: n(G.wEdges, ok), wc: n(G.wCorners, ok), me: n(G.mEdges, ok), yu: n(G.yEdges, yUp), ye: em, yc: n(G.yCorners, inPlace), cu: cu };
+  }
+
+  // ---------- bộ lập kế hoạch chính ----------
+  function plan(s, ctx) {
+    if (solved(s)) return null;
+    if (f2l(s)) {
+      if (ctx && ctx.last7 && loose6(s) >= 0) return plan7(s, { p: 0, m: 0 });
+      if (!s4(s)) return planYCross(s);
+      if (!s5(s)) return planYEdges(s);
+      if (!s6(s)) return planYCorners(s);
+      return plan7(s, { p: 0, m: 0 });
+    }
+    var d = detect7(s);
+    if (d) return plan7(s, d);
+    if (!s1(s)) return planCross(s);
+    if (!s2(s)) return planCorners(s);
+    return planMiddle(s);
+  }
+  function planMoves(pl) { var r = []; pl.segs.forEach(function (g) { r = r.concat(g.moves); }); return r; }
+
+  // ---------- xáo trộn và tạo tình huống ----------
+  var FACE = ['R', "R'", 'L', "L'", 'U', "U'", 'D', "D'", 'F', "F'", 'B', "B'"];
+  function scramble(rnd, n) {
+    rnd = rnd || Math.random; n = n || 25;
+    var out = [], last = '';
+    while (out.length < n) {
+      var mv = FACE[Math.floor(rnd() * 12)];
+      if (mv.charAt(0) === last) continue;
+      last = mv.charAt(0); out.push(mv);
+    }
+    return out;
+  }
+  // giải đến hết chặng k (k = 0..7); trả về số bước, hoặc -1 nếu lỗi
+  function solveTo(s, k, onPlan) {
+    var guard = 0, total = 0, ctx = { last7: false };
+    while (stageIndex(s) < k) {
+      var pl = plan(s, ctx);
+      if (!pl || ++guard > 300) return -1;
+      if (onPlan && onPlan(pl, s) === false) return total;
+      var mv = planMoves(pl);
+      if (!mv.length) return -1;
+      apply(s, mv); total += mv.length; ctx.last7 = pl.stage === 7;
+    }
+    return total;
+  }
+  // khối đã xong các chặng trước k, đang ở chặng k
+  function stageStart(k, rnd) {
+    for (var tries = 0; tries < 400; tries++) {
+      var s = apply(newCube(), scramble(rnd));
+      if (solveTo(s, k - 1) < 0) continue;
+      if (stageIndex(s) === k - 1) { var pl = plan(s); if (pl && pl.stage === k) return s; }
+    }
+    return null;
+  }
+  // khối đang gặp đúng tình huống caseId của chặng k
+  function findCase(k, caseId, rnd) {
+    for (var tries = 0; tries < 600; tries++) {
+      var s = stageStart(k, rnd); if (!s) continue;
+      var hit = null, ctx = { last7: false }, guard = 0;
+      while (stageIndex(s) < k && guard++ < 80) {
+        var pl = plan(s, ctx); if (!pl) break;
+        if (pl.id === caseId) { hit = s; break; }
+        apply(s, planMoves(pl)); ctx.last7 = pl.stage === 7;
+      }
+      if (hit) return hit;
+    }
+    return null;
+  }
+
+  return {
+    HOMES: HOMES, MOVES: MOVES, FORMULAS: FORMULAS, G: G, V: V,
+    newCube: newCube, clone: clone, move: move, apply: apply, run: run, inv: inv, parse: parse, rotMat: rotMat,
+    mmul: mmul, mvec: mvec, mTvec: mTvec, dirColor: dirColor, colorAt: colorAt, centerColor: centerColor, key: key,
+    stageIndex: stageIndex, solved: solved, plan: plan, planMoves: planMoves, counts: counts,
+    scramble: scramble, solveTo: solveTo, stageStart: stageStart, findCase: findCase
+  };
+})();
+
+</script>
+<script>
+(function () {
+  'use strict';
+  var $ = function (s, r) { return (r || document).querySelector(s); };
+  function el(tag, cls, txt) { var e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; }
+  function btn(txt, cls, fn) { var b = el('button', 'btn' + (cls ? ' ' + cls : ''), txt); b.type = 'button'; b.addEventListener('click', fn); return b; }
+  var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // ================= nội dung =================
+  var MV = { "R": 'Phải ↑', "R'": 'Phải ↓', "L": 'Trái ↓', "L'": 'Trái ↑', "U": 'Trên ←', "U'": 'Trên →', "D": 'Dưới →', "D'": 'Dưới ←', "F": 'Trước ↻', "F'": 'Trước ↺', "y": 'Cả khối ⇐', "y'": 'Cả khối ⇒', "B": 'Sau ↺', "B'": 'Sau ↻' };
+  var PAD = [
+    ['U', '←', 'Trên', 'Tầng trên sang trái'], ["U'", '→', 'Trên', 'Tầng trên sang phải'],
+    ['R', '↑', 'Phải', 'Cột phải đi lên'], ["R'", '↓', 'Phải', 'Cột phải đi xuống'],
+    ['F', '↻', 'Trước', 'Mặt trước xuôi chiều kim đồng hồ'], ["F'", '↺', 'Trước', 'Mặt trước ngược chiều kim đồng hồ'],
+    ['D', '→', 'Dưới', 'Tầng dưới sang phải'], ["D'", '←', 'Dưới', 'Tầng dưới sang trái'],
+    ['L', '↓', 'Trái', 'Cột trái đi xuống'], ["L'", '↑', 'Trái', 'Cột trái đi lên'],
+    ['y', '⇐', 'Cả khối', 'Xoay cả khối sang trái'], ["y'", '⇒', 'Cả khối', 'Xoay cả khối sang phải']
+  ];
+  var STAGES = [null,
+    { name: 'Chữ thập trắng', goal: 'Mặt đáy có một chữ thập màu trắng. Ở 4 mặt bên, màu của mỗi viên cạnh trắng giống ô giữa ngay trên nó.',
+      steps: ['Tìm một viên cạnh có màu trắng chưa nằm ở mặt trên.',
+        'Xoay cả khối để ô trắng của nó quay về phía bạn.',
+        'Đẩy nó lên mặt trên, nằm cạnh ô giữa màu vàng. Cách đẩy tùy chỗ ô trắng đang nằm: bấm xem máy làm mẫu ở dưới.',
+        'Làm lại đến khi đủ 4 ô trắng quanh ô giữa vàng. Hình đó gọi là bông cúc.',
+        'Thả cánh hoa: xoay tầng trên đến khi màu ở mặt bên của một cánh hoa giống ô giữa ngay dưới nó. Rồi xoay mặt đó 2 lần.',
+        'Thả đủ 4 cánh hoa là xong chữ thập trắng.'],
+      ifs: [],
+      cases: [['c1-fr', 'Ô trắng bên phải'], ['c1-fl', 'Ô trắng bên trái'], ['c1-uf', 'Ô trắng ở trên'], ['c1-df', 'Ô trắng ở dưới'], ['c1-d', 'Ô trắng quay xuống đáy'], ['c1-drop', 'Thả cánh hoa']], f: [] },
+    { name: 'Góc trắng', goal: 'Cả mặt đáy màu trắng. Ở 4 mặt bên, hàng dưới cùng giống màu ô giữa.',
+      steps: ['Tìm một viên góc có màu trắng ở tầng trên.',
+        'Viên góc đó có màu trắng và 2 màu khác. Xoay cả khối để 2 màu đó là ô giữa của mặt trước và mặt phải.',
+        'Xoay tầng trên để viên góc về góc trên bên phải của mặt trước.',
+        'Làm Thang máy 1, 3 hoặc 5 lần. Dừng khi viên góc xuống tầng dưới và ô trắng quay xuống đáy.',
+        'Làm lại cho đủ 4 viên góc trắng.'],
+      ifs: ['Viên góc trắng kẹt sai chỗ ở tầng dưới? Đưa nó về góc dưới bên phải của mặt trước, làm Thang máy 1 lần. Nó sẽ lên tầng trên.',
+        'Viên góc đúng chỗ nhưng ô trắng chưa quay xuống đáy? Để nó ở góc dưới bên phải của mặt trước, làm Thang máy 2 hoặc 4 lần.'],
+      cases: [['c2-top', 'Góc trắng ở tầng trên'], ['c2-wrong', 'Góc trắng nằm sai chỗ'], ['c2-twist', 'Góc trắng bị xoay lệch']], f: ['f1'] },
+    { name: 'Tầng giữa', goal: 'Ở 4 mặt bên, hai hàng dưới giống màu ô giữa.',
+      steps: ['Tìm một viên cạnh không có màu vàng ở tầng trên.',
+        'Xoay tầng trên đến khi màu ở mặt bên của nó giống ô giữa ngay dưới. Bạn sẽ thấy một vạch dọc cùng màu.',
+        'Xoay cả khối để vạch dọc đó quay về phía bạn.',
+        'Nhìn màu ở mặt trên của viên cạnh. Giống ô giữa bên phải thì làm Gửi sang phải. Giống ô giữa bên trái thì làm Gửi sang trái.',
+        'Làm lại cho đủ 4 viên cạnh của tầng giữa.'],
+      ifs: ['Viên cạnh kẹt sai chỗ ở tầng giữa? Đưa nó về bên phải của mặt trước, làm Gửi sang phải 1 lần. Nó sẽ lên tầng trên.'],
+      cases: [['c3-right', 'Gửi sang phải'], ['c3-left', 'Gửi sang trái'], ['c3-stuck', 'Viên cạnh bị kẹt']], f: ['f3r', 'f3l'] },
+    { name: 'Chữ thập vàng', goal: 'Mặt trên có một chữ thập màu vàng. Màu ở 4 mặt bên chưa cần đúng.',
+      steps: ['Nhìn mặt trên. Chỉ nhìn ô giữa và 4 ô cạnh. Bỏ qua 4 ô góc.',
+        'Bạn thấy hình gì màu vàng: một chấm, chữ L, hay một vạch thẳng?',
+        'Chữ L: xoay tầng trên để chữ L nằm ở góc xa bên trái. Vạch thẳng: xoay tầng trên để vạch nằm ngang. Một chấm: không cần xoay.',
+        'Làm công thức Chữ thập vàng.',
+        'Chưa thành chữ thập thì làm lại từ bước 2. Chấm thành chữ L. Chữ L thành vạch. Vạch thành chữ thập.'],
+      ifs: [],
+      cases: [['c4-dot', 'Một chấm'], ['c4-L', 'Chữ L'], ['c4-line', 'Vạch thẳng']], f: ['f4'] },
+    { name: 'Cạnh vàng đúng chỗ', goal: 'Ở 4 mặt bên, màu của 4 viên cạnh vàng giống ô giữa ngay dưới.',
+      steps: ['Xoay tầng trên từ từ. Dừng ở chỗ có đúng 2 viên cạnh vàng giống màu ô giữa ngay dưới.',
+        'Xoay cả khối để 2 viên đó ở phía sau và bên phải.',
+        'Làm công thức Đổi cạnh.',
+        'Xoay tầng trên cho cả 4 viên khớp màu.'],
+      ifs: ['Xoay tầng trên mà cả 4 viên cùng khớp màu? Xong chặng luôn.',
+        'Hai viên đúng màu nằm đối diện nhau? Làm Đổi cạnh 1 lần, rồi làm lại từ bước 1.'],
+      cases: [['c5-adj', 'Hai viên cạnh nhau'], ['c5-opp', 'Hai viên đối diện']], f: ['f5'] },
+    { name: 'Góc vàng đúng chỗ', goal: 'Cả 4 viên góc vàng nằm đúng chỗ. Ô vàng của chúng chưa cần quay lên trên.',
+      steps: ['Tìm một viên góc đúng chỗ: 3 màu của nó giống 3 ô giữa quanh nó. Ô vàng chưa quay lên trên cũng được.',
+        'Xoay cả khối để nó về góc trên bên phải của mặt trước.',
+        'Làm công thức Đổi góc. Ba viên góc kia đổi chỗ cho nhau.',
+        'Chưa đủ 4 viên đúng chỗ thì làm Đổi góc thêm 1 lần nữa.'],
+      ifs: ['Không có viên góc nào đúng chỗ? Làm Đổi góc 1 lần, rồi làm lại từ bước 1.',
+        'Cả 4 viên đã đúng chỗ sẵn? Xong chặng luôn.'],
+      cases: [['c6-one', 'Có 1 viên đúng chỗ'], ['c6-none', 'Chưa viên nào đúng chỗ']], f: ['f6'] },
+    { name: 'Xoay góc vàng', goal: 'Cả 6 mặt đúng màu. Bạn giải xong khối rubik!',
+      steps: ['Giữ nguyên cách cầm khối trong cả chặng này. Không xoay cả khối.',
+        'Nhìn góc trên bên phải của mặt trước. Ô vàng của nó chưa quay lên trên? Làm Thang máy ngược 2 hoặc 4 lần, đến khi ô vàng quay lên trên.',
+        'Chỉ xoay tầng trên để đưa viên góc chưa xong tiếp theo về đúng góc đó.',
+        'Làm lại bước 2 và bước 3 đến khi cả 4 ô vàng quay lên trên.',
+        'Xoay tầng trên cho khớp màu.'],
+      ifs: ['Giữa chừng, hai tầng dưới sẽ lộn xộn. Đừng lo và đừng sửa. Xong viên góc cuối cùng, mọi thứ tự về chỗ.'],
+      cases: [], f: ['f7'] }
+  ];
+  var RES = {
+    'c1-fr': 'Xong khi: ô trắng nằm ở mặt trên, cạnh ô giữa vàng.', 'c1-fl': 'Xong khi: ô trắng nằm ở mặt trên, cạnh ô giữa vàng.',
+    'c1-uf': 'Xong khi: ô trắng nằm ở mặt trên, cạnh ô giữa vàng.', 'c1-df': 'Xong khi: ô trắng nằm ở mặt trên, cạnh ô giữa vàng.',
+    'c1-d': 'Xong khi: ô trắng nằm ở mặt trên, cạnh ô giữa vàng.',
+    'c1-drop': 'Xong khi: viên cạnh trắng nằm ở đáy, màu ở mặt bên giống ô giữa.',
+    'c2-top': 'Xong khi: viên góc nằm ở tầng dưới, ô trắng quay xuống đáy.', 'c2-twist': 'Xong khi: ô trắng của viên góc quay xuống đáy.',
+    'c2-wrong': 'Xong khi: viên góc lên tầng trên. Sau đó đưa nó xuống đúng chỗ.',
+    'c3-right': 'Xong khi: viên cạnh nằm ở tầng giữa, 2 màu giống 2 ô giữa.', 'c3-left': 'Xong khi: viên cạnh nằm ở tầng giữa, 2 màu giống 2 ô giữa.',
+    'c3-stuck': 'Xong khi: viên cạnh lên tầng trên. Sau đó gửi nó vào đúng chỗ.',
+    'c4-dot': 'Xong khi: mặt trên có chữ L màu vàng.', 'c4-L': 'Xong khi: mặt trên có một vạch vàng.', 'c4-line': 'Xong khi: mặt trên có chữ thập vàng.',
+    'c5-turn': 'Xong khi: cả 4 viên cạnh vàng giống màu ô giữa.', 'c5-adj': 'Xong khi: xoay tầng trên thì cả 4 viên cạnh vàng khớp màu.',
+    'c5-opp': 'Xong khi: có 2 viên đúng màu nằm cạnh nhau.',
+    'c6-one': 'Xong khi: cả 4 viên góc đúng chỗ. Chưa được thì làm thêm 1 lần.', 'c6-none': 'Xong khi: có 1 viên góc đúng chỗ.',
+    'c7-twist': 'Xong khi: ô vàng ở góc trên bên phải của mặt trước quay lên trên.',
+    'c7-next': 'Xong khi: một viên góc chưa xong nằm ở góc trên bên phải của mặt trước.', 'c7-align': 'Xong khi: cả 6 mặt đúng màu.'
+  };
+  var INTRO = [
+    ['Ô giữa luôn đứng yên', 'Mỗi mặt có 9 ô. Ô ở chính giữa gọi là ô giữa. Ô giữa không bao giờ đổi chỗ. Ô giữa màu gì thì cả mặt đó phải về màu ấy. Luôn cầm khối như thế này: ô giữa vàng ở trên, ô giữa trắng ở dưới.', 'c'],
+    ['Viên cạnh và viên góc', 'Viên cạnh có 2 màu. Viên góc có 3 màu. Trên khối đang có viền hồng ở 1 viên cạnh và 1 viên góc. Giải rubik là đưa từng viên về đúng chỗ.', 'p'],
+    ['Cách xoay', 'Có 2 cách: vuốt ngón tay trên khối, hoặc bấm các nút bên dưới. Mũi tên trên nút cho biết hàng hoặc cột ở mặt trước sẽ chạy về hướng nào. Bấm thử từng nút nhé.', ''],
+    ['Vì sao lớp giữa không xoay?', 'Trong bài này, bạn chỉ xoay các lớp ngoài: trên, dưới, trái, phải, trước, sau. Lớp ở giữa không xoay riêng được. Nhờ vậy 6 ô giữa luôn đứng yên, và bạn luôn biết mặt nào phải về màu gì. Với khối thật cũng thế: không cần xoay lớp giữa vẫn giải được.', 'c'],
+    ['Nhìn mặt sau và mặt đáy', 'Bấm nút Nhìn quanh ở góc dưới bên phải của khối. Rồi kéo ngón tay trên khối để nhìn mọi phía. Xem xong, bấm Xong, về hướng chính. Máy đang nghiêng khối cho bạn xem thử.', 'v'],
+    ['Máy và khối rubik thật', 'Trên máy, bạn học và tập ở 3 màn: Xem, Làm theo, Tự làm. Với khối thật, bạn làm ở màn thứ 4, sau khi đã tự làm được trên máy. Khối trên máy do máy tự xáo, nên nó không giống khối thật của bạn. Các bước xoay sẽ khác nhau, nhưng cách làm giống hệt.', ''],
+    ['Mỗi chặng có 4 bước', 'Xem: máy làm mẫu cho bạn xem. Làm theo: bạn xoay theo mũi tên hồng trên máy. Tự làm: bạn tự giải trên máy. Đúng 1 khối, không cần gợi ý, là qua chặng. Khối thật: bạn đặt máy xuống và làm lại chặng đó trên khối rubik thật.', '']
+  ];
+  var REALCHK = [null,
+    ['Lật khối lên nhìn mặt đáy: có một chữ thập màu trắng.', 'Nhìn 4 mặt bên: màu của mỗi viên cạnh trắng giống ô giữa ngay trên nó.'],
+    ['Lật khối lên nhìn mặt đáy: cả mặt màu trắng.', 'Nhìn 4 mặt bên: hàng dưới cùng giống màu ô giữa.'],
+    ['Nhìn 4 mặt bên: hai hàng dưới giống màu ô giữa.'],
+    ['Nhìn mặt trên: có một chữ thập màu vàng.', 'Nhìn 4 mặt bên: hai hàng dưới vẫn giống màu ô giữa.'],
+    ['Nhìn 4 mặt bên: ô ở giữa hàng trên cùng giống màu ô giữa ngay dưới.', 'Nhìn mặt trên: vẫn có chữ thập vàng.'],
+    ['Nhìn từng viên góc ở tầng trên: 3 màu của nó giống 3 ô giữa quanh nó.'],
+    ['Cả 6 mặt của khối thật đúng màu.']
+  ];
+  var LEGEND = [['Trên ← là xoay tầng trên sang trái. Trên → là sang phải.', 'U'], ['Phải ↑ là đẩy cột bên phải lên. Phải ↓ là kéo xuống.', 'R'], ['Trái ↓ là kéo cột bên trái xuống. Trái ↑ là đẩy lên.', 'L'],
+    ['Trước ↻ là xoay mặt trước theo chiều kim đồng hồ. Trước ↺ là xoay ngược lại.', 'F'], ['Dưới → là xoay tầng dưới sang phải. Dưới ← là sang trái.', 'D'], ['Cả khối ⇐ là xoay cả khối sang trái, không xoay riêng lớp nào.', 'y']];
+  // ---- hình minh họa cho từng dòng chữ: b = khối mẫu, after = số việc đã xong, show = số bước đã làm, play = số bước sẽ chạy ----
+  var BASES = {
+    1: { A: { id: 'c1-fr', re: /^yu?p$/, vis: 1 }, B: { id: 'c1-drop', re: /^uyp$/, ok: function (s) { return Core.counts(s).petals === 4; } } },
+    2: { A: { id: 'c2-top', re: /^yuf$/, vis: 1 }, B: { id: 'c2-wrong', re: /^f$/ }, C: { id: 'c2-twist', re: /^f$/ } },
+    3: { A: { id: 'c3-right', re: /^uyf$/, vis: 1 }, B: { id: 'c3-stuck', re: /^f$/ }, D: { id: 'c3-left', re: /^u?y?f$/, vis: 1 } },
+    4: { A: { id: 'c4-L', re: /^uf$/ } },
+    5: { A: { id: 'c5-adj', re: /^uyf$/ }, B: { id: 'c5-turn' }, C: { id: 'c5-opp', re: /^u?f$/ } },
+    6: { A: { id: 'c6-one', re: /^yf$/, vis: 1, ok: function (s, pl) { return Core.stageIndex(Core.run(s, Core.planMoves(pl))) < 6; } }, B: { id: 'c6-none' } },
+    7: { A: { id: 'c7-twist', ok: function (s, pl) { if (Core.stageIndex(s) !== 6 || pl.segs.length !== 1) return false; var n = Core.plan(Core.run(s, Core.planMoves(pl)), { last7: true }); return !!n && n.id === 'c7-next'; } } }
+  };
+  var SCN = {
+    1: { steps: [{ b: 'A' }, { b: 'A', play: 1 }, { b: 'A', show: 1, play: 'all' }, { b: 'B', focus: 'wEdges' }, { b: 'B', play: 'all' }, { b: 'goal' }], ifs: [], f: {} },
+    2: { steps: [{ b: 'A' }, { b: 'A', play: 1 }, { b: 'A', show: 1, play: 1 }, { b: 'A', show: 2, play: 1 }, { b: 'goal' }], ifs: [{ b: 'B', play: 'all' }, { b: 'C', play: 'all' }], f: { f1: { b: 'A', show: 2, play: 1 } } },
+    3: { steps: [{ b: 'A' }, { b: 'A', play: 1 }, { b: 'A', show: 1, play: 1 }, { b: 'A', show: 2, play: 1 }, { b: 'goal' }], ifs: [{ b: 'B', play: 'all' }], f: { f3r: { b: 'A', show: 2, play: 1 }, f3l: { b: 'D', show: 'f', play: 1 } } },
+    4: { steps: [{ b: 'A', focus: 'ycross' }, { b: 'A', focus: 'ycross' }, { b: 'A', play: 1 }, { b: 'A', show: 1, play: 1 }, { b: 'A', after: 1, play: 'all' }], ifs: [], f: { f4: { b: 'A', show: 1, play: 1 } } },
+    5: { steps: [{ b: 'A', play: 1 }, { b: 'A', show: 1, play: 1 }, { b: 'A', show: 2, play: 1 }, { b: 'A', after: 1, play: 'all' }], ifs: [{ b: 'B', play: 'all' }, { b: 'C', play: 'all' }], f: { f5: { b: 'A', show: 2, play: 1 } } },
+    6: { steps: [{ b: 'A' }, { b: 'A', play: 1 }, { b: 'A', show: 1, play: 1 }, { b: 'A', after: 1, play: 'all' }], ifs: [{ b: 'B', play: 'all' }, { b: 'goal' }], f: { f6: { b: 'A', show: 1, play: 1 } } },
+    7: { steps: [{ b: 'A' }, { b: 'A', play: 'all' }, { b: 'A', after: 1, play: 'all' }, { b: 'A', after: 2, until: 'c7-align' }, { b: 'A', after: 'c7-align', play: 'all' }], ifs: [{ b: 'A', after: 1 }], f: { f7: { b: 'A', play: 'all' } } }
+  };
+  var MID = ['Cột giữa không xoay được. Hãy xoay cột trái hoặc cột phải.', 'Hàng giữa không xoay được. Hãy xoay tầng trên hoặc tầng dưới.', 'Lớp giữa không xoay được. Hãy xoay mặt trước.'];
+
+  // ================= tiến độ =================
+  var KEY = 'rubik7-progress-v1';
+  function fresh() { return { intro: false, st: {}, exam: { wins: 0, at: 0, best: 0 }, rev: {}, all: false, t: 0, z: 0 }; }
+  var prog = fresh();
+  function stg(k) { return prog.st[k] || (prog.st[k] = { streak: 0, passed: false, at: 0, g: 0 }); }
+  function adopt(d) { var p = fresh(); for (var k in d) p[k] = d[k]; if (!p.st) p.st = {}; if (!p.exam) p.exam = { wins: 0, at: 0, best: 0 }; if (!p.rev) p.rev = {}; prog = p; }
+  // ---- người học: mỗi người (mỗi máy) một bộ tiến độ riêng ----
+  var PKEY = 'rubik7-profile-v1', PLKEY = 'rubik7-profiles-v1', profile = null, plist = [], lsOK = false, cloudDb = null, cloudUid = null;
+  function rid() { return Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4); }
+  function pkey() { return KEY + ':' + profile.id; }
+  function savePlist() {
+    if (!plist.some(function (p) { return p.id === profile.id; })) plist.push({ id: profile.id, name: profile.name });
+    plist.forEach(function (p) { if (p.id === profile.id) p.name = profile.name; });
+    try { localStorage.setItem(PKEY, JSON.stringify(profile)); localStorage.setItem(PLKEY, JSON.stringify(plist)); } catch (e) { }
+  }
+  function loadProfile() {
+    try { localStorage.setItem('rubik7-test', '1'); lsOK = localStorage.getItem('rubik7-test') === '1'; profile = JSON.parse(localStorage.getItem(PKEY) || 'null'); plist = JSON.parse(localStorage.getItem(PLKEY) || '[]') || []; } catch (e) { }
+    if (!profile || !profile.id) {
+      profile = { id: rid(), name: '' };
+      // tiến độ cũ của máy này (trước khi có người học) chuyển sang người học đầu tiên của máy
+      try { var old = localStorage.getItem(KEY); if (old) { localStorage.setItem(pkey(), old); localStorage.removeItem(KEY); } var oldR = localStorage.getItem('rubik7-resume-v1'); if (oldR) { localStorage.setItem('rubik7-resume-v1:' + profile.id, oldR); localStorage.removeItem('rubik7-resume-v1'); } } catch (e) { }
+    }
+    savePlist();
+  }
+  function loadLocal() { prog = fresh(); try { var raw = localStorage.getItem(pkey()); if (raw) adopt(JSON.parse(raw)); } catch (e) { } if (prog.name && !profile.name) profile.name = prog.name; }
+  function switchProfile(p) {
+    clearTimeout(resumeTimer); try { localStorage.setItem(rk(), JSON.stringify({ r: RES_, last: null })); } catch (e) { }
+    cloudRef = null; cloudDirty = false; clearTimeout(cloudTimer);
+    profile = { id: p.id, name: p.name || '' }; savePlist();
+    loadLocal(); RES_ = {}; LAST = null; loadResume(); LAST = null; GOALS = {}; bindCloud(); renderHome();
+  }
+  function addProfile() {
+    switchProfile({ id: rid(), name: '' });
+    var i = $('#whoName'); if (i) i.focus();
+  }
+  function renameProfile(name) { profile.name = name; prog.name = name; savePlist(); save(); renderHome(); }
+  var cloudRef = null, cloudBusy = false, cloudDirty = false, cloudTimer = null;
+  function save() {
+    prog.t = Date.now();
+    prog.name = profile.name;
+    try { localStorage.setItem(pkey(), JSON.stringify(prog)); } catch (e) { }
+    if (cloudRef) { cloudDirty = true; clearTimeout(cloudTimer); cloudTimer = setTimeout(pushCloud, 1200); }
+  }
+  // gộp tiến độ của hai máy: giữ phần đã đạt được ở cả hai bên
+  function mergeProg(a, b) {
+    if ((a.z || 0) !== (b.z || 0)) return (a.z || 0) > (b.z || 0) ? a : b;
+    function mn(x, y) { return x && y ? Math.min(x, y) : (x || y || 0); }
+    var o = fresh(), k; o.z = a.z || 0; o.name = ((a.t || 0) >= (b.t || 0) ? a.name : b.name) || a.name || b.name || ''; o.intro = !!(a.intro || b.intro); o.t = Math.max(a.t || 0, b.t || 0);
+    o.all = (a.t || 0) >= (b.t || 0) ? !!a.all : !!b.all;
+    for (k = 1; k <= 7; k++) {
+      var x = (a.st || {})[k], y = (b.st || {})[k]; if (!x && !y) continue; x = x || {}; y = y || {};
+      o.st[k] = { streak: Math.max(x.streak || 0, y.streak || 0), passed: !!(x.passed || y.passed), at: mn(x.at, y.at), g: Math.max(x.g || 0, y.g || 0), seen: !!(x.seen || y.seen), star: !!(x.star || y.star), real: !!(x.real || y.real) };
+    }
+    var ea = a.exam || {}, eb = b.exam || {};
+    o.exam = { wins: Math.max(ea.wins || 0, eb.wins || 0), at: mn(ea.at, eb.at), best: mn(ea.best, eb.best) };
+    [1, 3, 7].forEach(function (d) { var v = mn((a.rev || {})[d], (b.rev || {})[d]); if (v) o.rev[d] = v; });
+    return o;
+  }
+  function takeRemote(remote) {
+    var m = mergeProg(prog, JSON.parse(JSON.stringify(remote)));
+    if (m !== prog) { adopt(m); if (prog.name && prog.name !== profile.name) { profile.name = prog.name; savePlist(); } try { localStorage.setItem(pkey(), JSON.stringify(prog)); } catch (e) { } if (S.view === 'home') renderHome(); }
+  }
+  function pushCloud() {
+    var ref = cloudRef;
+    if (!ref || cloudBusy || !cloudDirty) return;
+    cloudBusy = true; cloudDirty = false;
+    ref.get().then(function (snap) {
+      if (ref !== cloudRef) return;
+      if (snap.exists) takeRemote(snap.data());
+      return ref.set(JSON.parse(JSON.stringify(prog)));
+    }).then(function () { cloudBusy = false; if (cloudDirty) pushCloud(); },
+      function (e) { cloudBusy = false; if (e && (e.code === 'invalid_argument' || e.code === 'revoked' || e.code === 'not_granted')) cloudRef = null; });
+  }
+  // mỗi người học một bản lưu riêng trong tài khoản; máy khác chỉ thấy khi chọn đúng người học đó
+  function bindCloud() {
+    cloudRef = null; if (!cloudDb || !lsOK) return;
+    var pid = profile.id, ref = cloudDb.doc('data/users/' + cloudUid + '/p_' + pid);
+    ref.get().then(function (snap) {
+      if (profile.id !== pid) return;
+      if (snap.exists) takeRemote(snap.data());
+      cloudRef = ref;
+      if (prog.t) { cloudDirty = true; pushCloud(); }
+    }).catch(function () { });
+  }
+  function listCloud() {
+    if (!cloudDb) return;
+    cloudDb.collection('data/users/' + cloudUid).get().then(function (q) {
+      q.docs.forEach(function (d) {
+        if (d.id.indexOf('p_') !== 0) return;
+        var id = d.id.slice(2), nm = String((d.data() || {}).name || '').slice(0, 24), e = plist.filter(function (p) { return p.id === id; })[0];
+        if (e) { if (nm && id !== profile.id) e.name = nm; } else plist.push({ id: id, name: nm });
+      });
+      savePlist(); if (S.view === 'home') renderHome();
+    }).catch(function () { });
+  }
+  // Tiến độ chỉ lưu trên từng máy. Trang không dùng dữ liệu tài khoản, nên người xem không bị hỏi đăng nhập.
+  function initCloud() { }
+  // ---- khối đang làm dở: lưu lại để đổi thẻ, tải lại trang hay trang được cập nhật cũng không mất ----
+  var RKEY = 'rubik7-resume-v1', RES_ = {}, LAST = null, resumeTimer = null;
+  function rk() { return RKEY + ':' + profile.id; }
+  function loadResume() { try { var raw = localStorage.getItem(rk()); if (raw) { var d = JSON.parse(raw); RES_ = d.r || {}; LAST = d.last || null; } } catch (e) { } }
+  function persistResume() { clearTimeout(resumeTimer); resumeTimer = setTimeout(function () { try { localStorage.setItem(rk(), JSON.stringify({ r: RES_, last: LAST })); } catch (e) { } }, 250); }
+  function rkey() { return S.mode === 'guided' ? 'g' + S.stage : S.mode === 'solve' ? (S.kind === 'test' ? 't' + S.goal : S.kind === 'review' ? 'review' + S.review : S.kind) : null; }
+  function saveResume() {
+    var k = rkey(); if (!k) return;
+    if (S.done) delete RES_[k];
+    else RES_[k] = { cube: { m: S.cube.m, p: S.cube.p, at: S.cube.at, g: S.cube.g }, round: S.round, assisted: S.assisted, el: S.t0 ? Date.now() - S.t0 : 0, last7: S.last7, at: Date.now() };
+    persistResume();
+  }
+  function dropResume() { var k = rkey(); if (k && RES_[k]) { delete RES_[k]; persistResume(); } }
+  function tryResume() {
+    var k = rkey(), r = k && RES_[k];
+    if (!r || !r.cube || !r.cube.m || r.cube.m.length !== 27 || Date.now() - (r.at || 0) > 7 * DAY) return false;
+    var c = Core.clone(r.cube), goal = S.mode === 'guided' ? S.stage : S.goal;
+    if (Core.stageIndex(c) >= goal) { delete RES_[k]; return false; }
+    resetSession(); setCube(c); S.last7 = !!r.last7; S.moved = true;
+    if (S.mode === 'guided') { S.round = r.round === 2 ? 2 : 1; S.hint = S.round === 1 ? 2 : 1; }
+    else { S.assisted = !!r.assisted; if (r.el > 0) S.t0 = Date.now() - r.el; startTick(); }
+    computePlan(); snap();
+    toast('Tiếp tục khối bạn đang làm dở', 2400);
+    return true;
+  }
+  function mark() {
+    LAST = S.view === 'play' ? { view: 'play', mode: S.mode, stage: S.stage, kind: S.kind, review: S.review, at: Date.now() } : { view: 'home', at: Date.now() };
+    persistResume();
+  }
+  function setLook(on) {
+    var b = $('#look'); R.setLook(on); b.textContent = on ? 'Xong, về hướng chính' : 'Nhìn quanh'; b.setAttribute('aria-pressed', on ? 'true' : 'false'); b.classList.toggle('on', on);
+    Array.prototype.forEach.call($('#pad').children, function (k) { k.disabled = on; });
+    $('#peek').textContent = on ? 'Đang nhìn quanh.' : 'Lớp giữa không xoay được.';
+  }
+  function unlocked(k) { return prog.all || k <= 1 || stg(k - 1).passed; }
+  function examOpen() { return prog.all || stg(7).passed; }
+  var DAY = 86400000;
+
+  // ================= vẽ khối =================
+  var R = (function () {
+    var cv = $('#cv'), ctx = cv.getContext('2d');
+    var W = 300, H = 300, dpr = 1, cube = Core.newCube();
+    var base = { yaw: -0.56, pitch: 0.46 }, dyaw = 0, dpitch = 0, spring = null, spin = null, poseY = 0, poseP = 0, poseAnim = null;
+    var anim = null, hits = [], drag = null, flashIds = [], flashUntil = 0;
+    var api = { arrow: null, focus: [], mask: null, interactive: true, onMove: null, active: false };
+    var COL = { Y: '#ffd21a', W: '#f6f6f1', G: '#16a34a', B: '#2563eb', O: '#ff7a1a', R: '#dc2626' };
+    var DIRS = [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]];
+    var D = 11, ct, st, cp, sp, scale, cx, cy, eye;
+
+    function resize() {
+      var r = cv.getBoundingClientRect();
+      dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+      W = Math.max(60, r.width); H = Math.max(60, r.height);
+      cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+    }
+    function rotA(v, ax, a) {
+      var c = Math.cos(a), s = Math.sin(a), x = v[0], y = v[1], z = v[2];
+      if (ax === 0) return [x, y * c - z * s, y * s + z * c];
+      if (ax === 1) return [x * c + z * s, y, -x * s + z * c];
+      return [x * c - y * s, x * s + y * c, z];
+    }
+    function setup() {
+      var th = base.yaw + poseY + dyaw, ph = Math.max(-1.45, Math.min(1.45, base.pitch + poseP + dpitch));
+      ct = Math.cos(th); st = Math.sin(th); cp = Math.cos(ph); sp = Math.sin(ph);
+      scale = Math.min(W, H) / 5.7; cx = W / 2; cy = H / 2;
+      eye = [-D * cp * st, D * sp, D * cp * ct];
+    }
+    function proj(v) {
+      var x1 = v[0] * ct + v[2] * st, z1 = -v[0] * st + v[2] * ct;
+      var y2 = v[1] * cp - z1 * sp, z2 = v[1] * sp + z1 * cp, f = D / (D - z2);
+      return [cx + x1 * scale * f, cy - y2 * scale * f];
+    }
+    function poly(q) { ctx.beginPath(); ctx.moveTo(q[0][0], q[0][1]); for (var i = 1; i < q.length; i++) ctx.lineTo(q[i][0], q[i][1]); ctx.closePath(); }
+    var SQ = [[-1, -1], [1, -1], [1, 1], [-1, 1]];
+
+    function draw(now) {
+      setup();
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, H);
+      var ang = 0, ax = -1, layer = null;
+      if (anim) {
+        var t = Math.min(1, (now - anim.t0) / anim.dur), e = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+        ax = anim.ax; layer = anim.layer;
+        ang = anim.nudge ? Math.sin(Math.PI * t) * 0.24 * anim.q : e * anim.q * Math.PI / 2;
+      }
+      var A = [], B = [];
+      for (var i = 0; i < 27; i++) {
+        var p = cube.p[i], rot = !!anim && (layer === null || p[ax] === layer);
+        for (var k = 0; k < 6; k++) {
+          var d = DIRS[k], outward = p[0] * d[0] + p[1] * d[1] + p[2] * d[2] === 1, cut = false;
+          if (anim && layer !== null) { if (rot && d[ax] === -layer) cut = true; else if (!rot && p[ax] === 0 && d[ax] === layer) cut = true; }
+          if (!outward && !cut) continue;
+          var a2 = d[0] ? 0 : d[1] ? 1 : 2, u = [0, 0, 0], v = [0, 0, 0]; u[(a2 + 1) % 3] = 1; v[(a2 + 2) % 3] = 1;
+          var c = [p[0] + d[0] * 0.5, p[1] + d[1] * 0.5, p[2] + d[2] * 0.5], n = d;
+          var pts = SQ.map(function (s) { return [c[0] + (u[0] * s[0] + v[0] * s[1]) * 0.5, c[1] + (u[1] * s[0] + v[1] * s[1]) * 0.5, c[2] + (u[2] * s[0] + v[2] * s[1]) * 0.5]; });
+          if (rot) { pts = pts.map(function (q) { return rotA(q, ax, ang); }); c = rotA(c, ax, ang); n = rotA(d, ax, ang); }
+          if (n[0] * (eye[0] - c[0]) + n[1] * (eye[1] - c[1]) + n[2] * (eye[2] - c[2]) <= 0) continue;
+          (rot ? A : B).push({ i: i, p: p, d: d, n: n, c: c, pts: pts, outward: outward });
+        }
+      }
+      var order = (anim && layer !== null && !(layer * eye[ax] > 0.5)) ? A.concat(B) : B.concat(A);
+      hits = [];
+      var pulse = reduce ? 1 : 0.6 + 0.4 * Math.sin(now / 190);
+      var glow = [];
+      order.forEach(function (f) {
+        var q = f.pts.map(proj);
+        poly(q); ctx.fillStyle = '#0a0b0e'; ctx.fill(); ctx.strokeStyle = '#0a0b0e'; ctx.lineWidth = 1.2; ctx.lineJoin = 'round'; ctx.stroke();
+        if (!f.outward) return;
+        var sq = f.pts.map(function (pt) { return proj([f.c[0] + (pt[0] - f.c[0]) * 0.8, f.c[1] + (pt[1] - f.c[1]) * 0.8, f.c[2] + (pt[2] - f.c[2]) * 0.8]); });
+        var col = COL[Core.dirColor(Core.mTvec(cube.m[f.i], f.d))];
+        if (api.mask && !api.mask(f.i)) col = '#5d6270';
+        var z1 = -f.n[0] * st + f.n[2] * ct, y2 = f.n[1] * cp - z1 * sp, z2 = f.n[1] * sp + z1 * cp;
+        var shade = Math.min(1, 0.76 + 0.2 * z2 + 0.14 * Math.abs(y2));
+        poly(sq); ctx.fillStyle = col; ctx.strokeStyle = col; ctx.lineWidth = scale * 0.09; ctx.fill(); ctx.stroke();
+        if (shade < 1) { ctx.fillStyle = ctx.strokeStyle = 'rgba(0,0,0,' + (1 - shade).toFixed(3) + ')'; ctx.fill(); ctx.stroke(); }
+        hits.push({ q: q, p: f.p, d: f.d, c: f.c });
+        if (api.focus.indexOf(f.i) >= 0 || (flashUntil > now && flashIds.indexOf(f.i) >= 0)) glow.push(sq);
+      });
+      glow.forEach(function (sq) {
+        poly(sq); ctx.lineWidth = scale * 0.13; ctx.strokeStyle = 'rgba(10,11,14,.9)'; ctx.stroke();
+        ctx.lineWidth = scale * 0.07; ctx.strokeStyle = 'rgba(255,45,149,' + pulse.toFixed(2) + ')'; ctx.stroke();
+      });
+      if (api.arrow && !anim && eye[2] > 1.6) drawArrow(api.arrow, pulse);
+    }
+    function arrowLines(mv) {
+      var z = 1.53, a = 1.12, m = mv.charAt(0), pr = mv.length > 1;
+      function ln(x1, y1, x2, y2) { return pr ? [[x2, y2, z], [x1, y1, z]] : [[x1, y1, z], [x2, y2, z]]; }
+      if (m === 'R') return [ln(1, -a, 1, a)];
+      if (m === 'L') return [ln(-1, a, -1, -a)];
+      if (m === 'U') return [ln(a, 1, -a, 1)];
+      if (m === 'D') return [ln(-a, -1, a, -1)];
+      if (m === 'y') return [ln(a, 1, -a, 1), ln(a, 0, -a, 0), ln(a, -1, -a, -1)];
+      if (m === 'F') {
+        var pts = [];
+        for (var g = 0; g <= 28; g++) { var an = (140 - g * 10) * Math.PI / 180; pts.push([Math.cos(an) * 0.95, Math.sin(an) * 0.95, z]); }
+        return [pr ? pts.reverse() : pts];
+      }
+      return [];
+    }
+    function drawArrow(mv, pulse) {
+      var w = Math.max(4, scale * 0.13);
+      arrowLines(mv).forEach(function (line) {
+        var q = line.map(proj), n = q.length, a = q[n - 2], b = q[n - 1];
+        var dx = b[0] - a[0], dy = b[1] - a[1], L = Math.hypot(dx, dy) || 1; dx /= L; dy /= L;
+        var hs = w * 2.3, tip = [b[0] + dx * hs * 0.5, b[1] + dy * hs * 0.5];
+        function stroke(width, col) {
+          ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.lineWidth = width; ctx.strokeStyle = col; ctx.fillStyle = col;
+          ctx.beginPath(); ctx.moveTo(q[0][0], q[0][1]); for (var i = 1; i < n; i++) ctx.lineTo(q[i][0], q[i][1]); ctx.stroke();
+          var e = (width - w) / 2;
+          ctx.beginPath(); ctx.moveTo(tip[0] + dx * e, tip[1] + dy * e);
+          ctx.lineTo(b[0] - dx * hs * 0.6 - dy * (hs * 0.75 + e), b[1] - dy * hs * 0.6 + dx * (hs * 0.75 + e));
+          ctx.lineTo(b[0] - dx * hs * 0.6 + dy * (hs * 0.75 + e), b[1] - dy * hs * 0.6 - dx * (hs * 0.75 + e));
+          ctx.closePath(); ctx.fill(); if (e > 0) { ctx.lineWidth = e; ctx.stroke(); }
+        }
+        stroke(w + 6, 'rgba(10,11,14,.92)');
+        ctx.globalAlpha = 0.55 + 0.45 * pulse; stroke(w, '#ff2d95'); ctx.globalAlpha = 1;
+      });
+    }
+    function start(mv, dur, cb, nudge) {
+      var d = Core.MOVES[mv];
+      anim = { mv: mv, ax: d[0], layer: d[1], q: d[2], t0: performance.now(), dur: dur, cb: cb, nudge: !!nudge };
+    }
+    function frame() {
+      var now = performance.now();
+      if (api.active) {
+        if (poseAnim) { var t0 = Math.min(1, (now - poseAnim.t0) / 480), e0 = 1 - Math.pow(1 - t0, 3); poseY = poseAnim.y0 + (poseAnim.y1 - poseAnim.y0) * e0; poseP = poseAnim.p0 + (poseAnim.p1 - poseAnim.p0) * e0; if (t0 >= 1) poseAnim = null; }
+        if (spring) { var t = Math.min(1, (now - spring.t0) / 280), e = 1 - Math.pow(1 - t, 3); dyaw = spring.y * (1 - e); dpitch = spring.p * (1 - e); if (t >= 1) spring = null; }
+        if (spin) { var t2 = Math.min(1, (now - spin) / 1100), e2 = 1 - Math.pow(1 - t2, 3); dyaw = -Math.PI * 2 * e2; if (t2 >= 1) { spin = null; dyaw = 0; } }
+        if (anim && now - anim.t0 >= anim.dur) {
+          var a = anim; anim = null;
+          if (!a.nudge) Core.move(cube, a.mv);
+          if (a.cb) a.cb();
+        }
+        draw(now);
+      }
+      requestAnimationFrame(frame);
+    }
+    // ---- chạm và vuốt ----
+    function inside(q, x, y) {
+      var sign = 0;
+      for (var i = 0; i < 4; i++) {
+        var a = q[i], b = q[(i + 1) % 4], cr = (b[0] - a[0]) * (y - a[1]) - (b[1] - a[1]) * (x - a[0]);
+        if (cr !== 0) { if (sign === 0) sign = cr > 0 ? 1 : -1; else if ((cr > 0 ? 1 : -1) !== sign) return false; }
+      }
+      return true;
+    }
+    function xy(ev) { var r = cv.getBoundingClientRect(); return [ev.clientX - r.left, ev.clientY - r.top]; }
+    cv.addEventListener('pointerdown', function (ev) {
+      var p = xy(ev), hit = null;
+      if (api.interactive && !api.look && !anim) for (var i = hits.length - 1; i >= 0; i--) if (inside(hits[i].q, p[0], p[1])) { hit = hits[i]; break; }
+      spring = null;
+      drag = hit ? { type: 'turn', hit: hit, x: p[0], y: p[1] } : { type: 'peek', x: p[0], y: p[1], y0: dyaw, p0: dpitch };
+      try { cv.setPointerCapture(ev.pointerId); } catch (e) { }
+      ev.preventDefault();
+    });
+    cv.addEventListener('pointermove', function (ev) {
+      if (!drag) return;
+      var p = xy(ev), dx = p[0] - drag.x, dy = p[1] - drag.y;
+      if (drag.type === 'peek') {
+        dyaw = api.look ? drag.y0 + dx * 0.012 : Math.max(-2.6, Math.min(2.6, drag.y0 + dx * 0.012));
+        dpitch = Math.max(-1.9, Math.min(1.0, drag.p0 + dy * 0.012));
+        return;
+      }
+      if (Math.hypot(dx, dy) < 16) return;
+      var h = drag.hit, n = h.d, ax = n[0] ? 0 : n[1] ? 1 : 2, bestT = null, bestA = 0;
+      [(ax + 1) % 3, (ax + 2) % 3].forEach(function (ta) {
+        var tv = [0, 0, 0]; tv[ta] = 1;
+        var a = proj(h.c), b = proj([h.c[0] + tv[0] * 0.5, h.c[1] + tv[1] * 0.5, h.c[2] + tv[2] * 0.5]);
+        var sx = b[0] - a[0], sy = b[1] - a[1], L = Math.hypot(sx, sy) || 1, comp = (dx * sx + dy * sy) / L;
+        if (Math.abs(comp) > Math.abs(bestA)) { bestA = comp; bestT = tv; }
+      });
+      drag = null;
+      if (!bestT) return;
+      var s = bestA > 0 ? 1 : -1, t = [bestT[0] * s, bestT[1] * s, bestT[2] * s];
+      var w = [n[1] * t[2] - n[2] * t[1], n[2] * t[0] - n[0] * t[2], n[0] * t[1] - n[1] * t[0]];
+      var wa = w[0] ? 0 : w[1] ? 1 : 2, layer = h.p[wa], q = w[wa];
+      if (layer === 0) { if (api.onBlocked) api.onBlocked(wa); return; }
+      for (var name in Core.MOVES) { var m = Core.MOVES[name]; if (m[0] === wa && m[1] === layer && m[2] === q) { if (api.onMove) api.onMove(name); break; } }
+    });
+    function release() { if (drag && drag.type === 'peek' && !api.look) spring = { t0: performance.now(), y: dyaw, p: dpitch }; drag = null; }
+    cv.addEventListener('pointerup', release); cv.addEventListener('pointercancel', release);
+    if (window.ResizeObserver) new ResizeObserver(resize).observe(cv); else window.addEventListener('resize', resize);
+    requestAnimationFrame(frame);
+
+    api.setCube = function (c) { cube = c; anim = null; spin = null; spring = null; dyaw = 0; dpitch = 0; flashUntil = 0; };
+    api.animate = function (mv, dur, cb) { start(mv, dur, cb, false); };
+    api.nudge = function (mv, cb) { start(mv, 230, cb, true); };
+    api.busy = function () { return !!anim; };
+    api.flash = function (ids, ms) { flashIds = ids; flashUntil = performance.now() + ms; };
+    api.spin = function () { if (!reduce) { spin = performance.now(); spring = null; } };
+    api.resize = resize; api.COL = COL;
+    api.look = false;
+    api.setLook = function (on) { api.look = !!on; if (!on && (dyaw || dpitch)) { dyaw = Math.atan2(Math.sin(dyaw), Math.cos(dyaw)); spring = { t0: performance.now(), y: dyaw, p: dpitch }; } };
+    api.pose = function (y, p, instant) { if (instant || reduce) { poseY = y; poseP = p; poseAnim = null; } else poseAnim = { y0: poseY, p0: poseP, y1: y, p1: p, t0: performance.now() }; };
+    return api;
+  })();
+
+  // ================= phiên học =================
+  var S = { view: 'home', mode: null, stage: 0, kind: null, goal: 0, cube: Core.newCube(), plan: null, q: [], qi: 0, last7: false, planBase: 0,
+    hint: 0, reveal: false, wrong: 0, assisted: false, round: 1, history: [], stray: null, done: null, demo: null, introPage: 0, t0: 0, elapsed: 0, review: 0 };
+  var inputQ = [], demoTimer = null, tickTimer = null, toastTimer = null;
+
+  function toast(msg, ms) { var t = $('#toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toastTimer); toastTimer = setTimeout(function () { t.classList.remove('on'); }, ms || 1600); }
+  function fmt(ms) { var s = Math.round(ms / 1000); return Math.floor(s / 60) + ':' + ('0' + (s % 60)).slice(-2); }
+  function maskFor(k) {
+    if (k >= 4) return null;
+    var show = {}; Core.G.centers.concat(Core.G.wEdges, k >= 2 ? Core.G.wCorners : [], k >= 3 ? Core.G.mEdges : []).forEach(function (i) { show[i] = 1; });
+    return function (i) { return !!show[i]; };
+  }
+  function computePlan() {
+    S.plan = Core.plan(S.cube, { last7: S.last7 }); S.q = []; S.qi = 0; S.planBase = Core.stageIndex(S.cube);
+    if (S.plan) S.plan.segs.forEach(function (g, gi) { g.moves.forEach(function (mv, mi) { S.q.push({ mv: mv, gi: gi, mi: mi }); }); });
+  }
+  function resetSession() {
+    clearTimeout(demoTimer); inputQ = []; S.plan = null; S.q = []; S.qi = 0; S.last7 = false; S.hint = 0; S.reveal = false; S.wrong = 0;
+    S.assisted = false; S.checkMsg = ''; S.moved = false; S.ms = 0; S.msMax = 0; S.progText = ''; S.history = []; S.stray = null; S.done = null; S.demo = null; S.t0 = 0; S.elapsed = 0;
+    R.mask = null; R.interactive = true; stopScene(); R.pose(0, 0, true); if (R.look) setLook(false);
+  }
+  function setCube(c) { S.cube = c; R.setCube(c); }
+  function scrambled() { var s; do { s = Core.apply(Core.newCube(), Core.scramble()); } while (Core.stageIndex(s) > 0); return s; }
+
+  // ---- mở các chế độ ----
+  function show(view) {
+    S.view = view; $('#home').hidden = view !== 'home'; $('#play').hidden = view !== 'play'; R.active = view === 'play';
+    if (view === 'play') { R.resize(); setTimeout(R.resize, 60); } else { clearInterval(tickTimer); clearTimeout(demoTimer); clearTimeout(sceneTimer); renderHome(); mark(); }
+    window.scrollTo(0, 0);
+  }
+  function openIntro() { resetSession(); S.mode = 'intro'; S.stage = 0; S.introPage = 0; setCube(Core.newCube()); show('play'); render(); }
+  function openStage(k, tab) { S.stage = k; show('play'); setTab(tab || 'learn'); }
+  function setTab(tab) {
+    resetSession(); var k = S.stage;
+    if (tab === 'learn') { S.mode = 'learn'; setCube(Core.clone(goalCube(k))); R.mask = maskFor(k); R.interactive = false; R.pose(0, k <= 2 ? -0.98 : 0, true); }
+    else if (tab === 'real') { S.mode = 'real'; setCube(Core.clone(goalCube(k))); R.mask = maskFor(k); R.interactive = false; R.pose(0, k <= 2 ? -0.98 : 0, true); }
+    else if (tab === 'guided') { S.mode = 'guided'; S.round = 1; if (!tryResume()) newGuided(); }
+    else { S.mode = 'solve'; S.kind = 'test'; S.goal = k; if (!tryResume()) newSolve(); }
+    render();
+  }
+  function newGuided() {
+    var keep = S.round; resetSession(); S.round = keep;
+    setCube(Core.stageStart(S.stage) || Core.newCube()); S.hint = S.round === 1 ? 2 : 1; computePlan(); snap(); dropResume();
+  }
+  function newSolve() {
+    var kind = S.kind, goal = S.goal, rv = S.review; resetSession(); S.kind = kind; S.goal = goal; S.review = rv;
+    setCube(scrambled()); computePlan(); snap(); dropResume(); startTick();
+  }
+  function openSolve(kind, review) { S.stage = 7; S.mode = 'solve'; S.kind = kind; S.goal = 7; S.review = review || 0; show('play'); if (!tryResume()) newSolve(); render(); }
+  function startTick() { clearInterval(tickTimer); tickTimer = setInterval(function () { if (S.mode === 'solve' && S.t0 && !S.done) renderStat(); }, 500); }
+
+  // ---- nhận nước xoay ----
+  function request(mv) {
+    if (S.done || !R.interactive || S.view !== 'play') return;
+    if (R.look) { toast('Bấm "Xong, về hướng chính" rồi mới xoay tiếp', 2400); return; }
+    if (inputQ.length < 4) inputQ.push(mv);
+    pump();
+  }
+  function accept(mv) {
+    var e = S.q[S.qi]; if (!e) return false;
+    if (e.mv === mv) return true;
+    var n = S.q[S.qi + 1];
+    if (n && n.mv === e.mv && n.gi === e.gi && mv === Core.inv(e.mv)) { e.mv = mv; n.mv = mv; return true; }
+    return false;
+  }
+  function pump() {
+    if (R.busy() || !inputQ.length) return;
+    var mv = inputQ.shift();
+    if (S.mode === 'guided' && !accept(mv)) {
+      S.wrong++; if (S.wrong >= 2) S.reveal = true;
+      toast(S.hint === 2 || S.reveal ? 'Chưa đúng, nhìn mũi tên hồng nhé' : 'Chưa đúng bước, thử lại nhé');
+      R.arrow = null; R.nudge(mv, function () { render(); pump(); });
+      return;
+    }
+    if (S.mode === 'solve') {
+      S.history.push({ mv: mv, plan: S.plan, q: S.q.map(function (o) { return { mv: o.mv, gi: o.gi, mi: o.mi }; }), qi: S.qi, last7: S.last7, planBase: S.planBase, stray: S.stray, hint: S.hint, ms: S.ms, progText: S.progText });
+      if (S.history.length > 400) S.history.shift();
+      if (!S.t0) S.t0 = Date.now();
+    }
+    R.arrow = null; S.moved = true; S.checkMsg = '';
+    R.animate(mv, 170, function () { afterMove(mv); pump(); });
+  }
+  function afterMove(mv) {
+    if (accept(mv)) { S.qi++; S.wrong = 0; S.reveal = false; }
+    else {
+      if (S.qi > 0 && !S.stray) S.stray = { h: S.history.length - 1, base: S.planBase };
+      S.plan = null; S.q = []; S.qi = 0;
+    }
+    if (S.stray && Core.stageIndex(S.cube) >= S.stray.base) S.stray = null;
+    var clean = false;
+    if (S.qi >= S.q.length) {
+      var finished = !!S.plan; if (S.plan) S.last7 = S.plan.stage === 7;
+      computePlan();
+      if (finished) { clean = true; if (S.mode === 'solve') S.hint = 0; }
+    }
+    var was = S.ms;
+    if (S.mode === 'guided' ? clean : (S.mode === 'solve' && (clean || S.qi === 0 || Core.stageIndex(S.cube) > S.ms))) snap();
+    if (S.mode === 'solve' && S.ms > was && S.ms > (S.msMax || 0) && S.ms < S.goal) toast('Máy đã kiểm tra: xong chặng ' + S.ms + ' ✓', 2600);
+    if (S.mode === 'solve') S.msMax = Math.max(S.msMax || 0, S.ms);
+    checkDone(); if (S.done || S.qi === 0) saveResume(); render();
+  }
+  function undo() {
+    if (R.busy() || !S.history.length || S.done) return;
+    var h = S.history.pop(); inputQ = [];
+    R.animate(Core.inv(h.mv), 130, function () { S.plan = h.plan; S.q = h.q; S.qi = h.qi; S.last7 = h.last7; S.planBase = h.planBase; S.stray = h.stray; S.hint = h.hint; S.ms = h.ms; S.progText = h.progText; render(); });
+  }
+  function backToGood() {
+    if (!S.stray || R.busy()) return;
+    var n = S.history.length - S.stray.h; if (n < 1) { S.stray = null; return render(); }
+    (function step() { if (n-- > 0 && S.history.length) { var h = S.history.pop(); R.animate(Core.inv(h.mv), 90, function () { S.plan = h.plan; S.q = h.q; S.qi = h.qi; S.last7 = h.last7; S.planBase = h.planBase; S.stray = h.stray; S.ms = h.ms; S.progText = h.progText; step(); }); } else render(); })();
+  }
+
+  // ---- kết thúc ----
+  function checkDone() {
+    if (S.done) return;
+    var idx = Core.stageIndex(S.cube);
+    if (S.mode === 'guided' && idx >= S.stage) {
+      var g = stg(S.stage); g.g = Math.max(g.g, S.round); save();
+      S.done = { type: 'guided' }; R.spin();
+    } else if (S.mode === 'solve' && idx >= S.goal) {
+      S.elapsed = S.t0 ? Date.now() - S.t0 : 0;
+      var d = { type: S.kind, clean: !S.assisted };
+      if (S.kind === 'test') {
+        var s = stg(S.goal);
+        s.streak = S.assisted ? 0 : s.streak + 1;
+        if (!S.assisted && !s.passed) { s.passed = true; s.at = Date.now(); d.passed = true; }
+        if (s.streak >= 3 && !s.star) { s.star = true; d.star = !d.passed; }
+        d.streak = s.streak;
+      } else if (S.kind === 'exam') {
+        prog.exam.wins = (prog.exam.wins || 0) + 1;
+        if (!prog.exam.best || S.elapsed < prog.exam.best) prog.exam.best = S.elapsed;
+        if (prog.exam.wins >= 3 && !prog.exam.at) { prog.exam.at = Date.now(); d.passed = true; }
+        d.wins = prog.exam.wins;
+      } else if (S.kind === 'review' && d.clean) { prog.rev[S.review] = Date.now(); }
+      save(); S.done = d; R.spin();
+    }
+  }
+
+  // ---- máy làm mẫu ----
+  function startDemo(id, again) {
+    clearTimeout(demoTimer); stopScene(); R.pose(0, 0);
+    var k = S.stage, s = again && S.demo ? Core.clone(S.demo.start) : (id === 'all' ? Core.stageStart(k) : Core.findCase(k, id));
+    if (!s) { toast('Chưa tạo được ví dụ, bấm lại nhé'); return; }
+    S.demo = { id: id, playing: false, over: false, start: Core.clone(s) };
+    setCube(s); S.last7 = false; computePlan(); R.mask = maskFor(k); R.interactive = false; render();
+  }
+  function demoStep() {
+    if (R.busy() || !S.demo) return;
+    var e = S.q[S.qi];
+    if (!e) { S.demo.over = true; S.demo.playing = false; seen(); render(); return; }
+    R.arrow = null;
+    R.animate(e.mv, reduce ? 240 : 520, function () {
+      if (!S.demo) return;
+      S.qi++;
+      if (S.qi >= S.q.length) {
+        if (S.demo.id === 'all' && Core.stageIndex(S.cube) < S.stage) { S.last7 = S.plan.stage === 7; computePlan(); }
+        else { S.demo.over = true; S.demo.playing = false; seen(); }
+      }
+      render();
+      if (S.demo.playing) demoTimer = setTimeout(demoStep, 520);
+    });
+  }
+  function seen() { var g = stg(S.stage); if (!g.seen) { g.seen = true; save(); } }
+  function demoPlay(on) { S.demo.playing = on; clearTimeout(demoTimer); render(); if (on) demoTimer = setTimeout(demoStep, 350); }
+
+  // ================= dựng giao diện =================
+  function chips(g, mi) {
+    var row = el('div', 'chips'), base = g.moves, idx = mi, lap = 0, n = 1;
+    if (g.f && g.reps > 1) { var L = Core.FORMULAS[g.f].moves.length; base = g.moves.slice(0, L); n = g.reps; idx = mi % L; lap = Math.floor(mi / L) + 1; }
+    base.forEach(function (mv, k) { row.appendChild(el('span', 'chip' + (k < idx ? ' past' : k === idx ? ' now' : ''), MV[mv])); });
+    if (n > 1) row.appendChild(el('span', 'times', 'lần ' + lap + '/' + n));
+    return row;
+  }
+  function planBlock(showChips) {
+    var w = el('div', 'plan');
+    if (!S.plan) return w;
+    w.appendChild(el('p', 'sub', 'Đang làm'));
+    w.appendChild(el('h3', '', S.plan.title));
+    if (RES[S.plan.id]) w.appendChild(el('p', 'note', RES[S.plan.id]));
+    var ol = el('ol', 'segs'), e = S.q[S.qi], cur = e ? e.gi : S.plan.segs.length;
+    S.plan.segs.forEach(function (g, gi) {
+      var li = el('li', gi < cur ? 'done' : gi === cur ? 'cur' : '', g.t);
+      if (gi === cur && showChips) li.appendChild(chips(g, e.mi));
+      ol.appendChild(li);
+    });
+    w.appendChild(ol);
+    return w;
+  }
+  // ---- thẻ mục tiêu: hình kết quả + lời + tiến độ ----
+  var GOALS = {};
+  function goalCube(k) { if (!GOALS[k]) GOALS[k] = (k >= 4 && k <= 6 ? Core.stageStart(k + 1) : null) || Core.newCube(); return GOALS[k]; }
+  function drawThumb(cv, cube, mask, below) {
+    var dpr = Math.min(window.devicePixelRatio || 1, 2.5), px = 78, g = cv.getContext('2d');
+    cv.width = cv.height = Math.round(px * dpr); cv.style.width = cv.style.height = px + 'px';
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    var th = -0.6, ph = below ? -0.52 : 0.5, ct = Math.cos(th), st = Math.sin(th), cp = Math.cos(ph), sp = Math.sin(ph), D = 11, sc = px / 5.5;
+    var eye = [-D * cp * st, D * sp, D * cp * ct];
+    function pr(v) { var x1 = v[0] * ct + v[2] * st, z1 = -v[0] * st + v[2] * ct, y2 = v[1] * cp - z1 * sp, z2 = v[1] * sp + z1 * cp, f = D / (D - z2); return [px / 2 + x1 * sc * f, px / 2 - y2 * sc * f]; }
+    function path(q) { g.beginPath(); g.moveTo(q[0][0], q[0][1]); for (var i = 1; i < 4; i++) g.lineTo(q[i][0], q[i][1]); g.closePath(); }
+    [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]].forEach(function (d) {
+      if (d[0] * eye[0] + d[1] * eye[1] + d[2] * eye[2] <= 1.5) return;
+      var ax = d[0] ? 0 : d[1] ? 1 : 2, u = [0, 0, 0], v = [0, 0, 0]; u[(ax + 1) % 3] = 1; v[(ax + 2) % 3] = 1;
+      for (var i = 0; i < 27; i++) {
+        var p = cube.p[i]; if (p[0] * d[0] + p[1] * d[1] + p[2] * d[2] !== 1) continue;
+        var c = [p[0] + d[0] * 0.5, p[1] + d[1] * 0.5, p[2] + d[2] * 0.5];
+        function quad(h) { return [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(function (s) { return pr([c[0] + (u[0] * s[0] + v[0] * s[1]) * h, c[1] + (u[1] * s[0] + v[1] * s[1]) * h, c[2] + (u[2] * s[0] + v[2] * s[1]) * h]); }); }
+        path(quad(0.5)); g.fillStyle = g.strokeStyle = '#0a0b0e'; g.lineWidth = 1; g.fill(); g.stroke();
+        var col = R.COL[Core.dirColor(Core.mTvec(cube.m[i], d))]; if (mask && !mask(i)) col = '#5d6270';
+        path(quad(0.4)); g.fillStyle = col; g.fill();
+      }
+    });
+  }
+  function goalCard(k, task, note) {
+    var w = el('div', 'gcard'), cv = el('canvas', 'thumb'), t = el('div', 'gtxt');
+    cv.setAttribute('role', 'img'); cv.setAttribute('aria-label', 'Hình khối khi xong chặng ' + k);
+    t.appendChild(el('p', 'sub', 'Kết quả cần đạt' + (k <= 2 ? ' (hình nhìn từ dưới lên)' : '')));
+    var gg = el('p', 'gg', STAGES[k].goal); if (S.mode === 'learn' || S.mode === 'real') ill(gg, { b: 'goal' }); t.appendChild(gg);
+    if (task) t.appendChild(el('p', 'gtask', task));
+    if (note) t.appendChild(el('p', 'note', note));
+    w.appendChild(cv); w.appendChild(t);
+    drawThumb(cv, goalCube(k), maskFor(k), k <= 2);
+    return w;
+  }
+  function progLine(k) {
+    var c = Core.counts(S.cube);
+    if (k === 1) return 'Ô trắng quanh ô giữa vàng: ' + c.petals + '/4. Cạnh trắng đã xuống đáy đúng chỗ: ' + c.cross + '/4.';
+    if (k === 2) return 'Viên góc trắng đã đúng chỗ: ' + c.wc + '/4.';
+    if (k === 3) return 'Viên cạnh tầng giữa đã đúng chỗ: ' + c.me + '/4.';
+    if (k === 4) return 'Ô cạnh màu vàng ở mặt trên: ' + c.yu + '/4.';
+    if (k === 5) return 'Viên cạnh vàng đã đúng màu: ' + c.ye + '/4.';
+    if (k === 6) return 'Viên góc vàng đã đúng chỗ: ' + c.yc + '/4.';
+    return 'Viên góc có ô vàng quay lên trên: ' + c.cu + '/4.';
+  }
+  function snap() {
+    S.ms = S.plan ? S.plan.stage - 1 : 7;
+    S.progText = progLine(S.mode === 'guided' ? S.stage : Math.min(7, S.ms + 1));
+  }
+  function checkReport() {
+    var pl = Core.plan(S.cube, { last7: S.last7 }), k = pl ? pl.stage : 8, c = Core.counts(S.cube), m;
+    S.ms = Math.min(7, k - 1); S.progText = progLine(Math.min(7, k));
+    var head = k > 1 ? 'Máy đã kiểm tra: xong đến hết chặng ' + (k - 1) + ' ✓. ' : 'Máy đã kiểm tra. ';
+    if (k === 1) m = (c.wd === 4 && c.cross < 4) ? 'Chữ thập trắng đã có ở đáy, nhưng còn ' + (4 - c.cross) + ' viên có màu ở mặt bên chưa giống ô giữa. Đưa viên đó lên lại mặt trên, rồi thả xuống đúng mặt.' : 'Chặng 1 chưa xong: còn ' + (4 - c.cross) + ' viên cạnh trắng chưa nằm đúng chỗ ở đáy.';
+    else if (k === 2) m = (c.wcd === 4 && c.wc < 4) ? 'Mặt đáy đã trắng, nhưng còn ' + (4 - c.wc) + ' viên góc nằm sai chỗ: màu ở mặt bên chưa giống ô giữa.' : 'Chặng 2 chưa xong: còn ' + (4 - c.wc) + ' viên góc trắng chưa đúng chỗ.';
+    else if (k === 3) m = 'Chặng 3 chưa xong: còn ' + (4 - c.me) + ' viên cạnh tầng giữa chưa đúng chỗ.';
+    else if (k === 4) m = 'Chặng 4 chưa xong: mặt trên mới có ' + c.yu + '/4 ô cạnh màu vàng.';
+    else if (k === 5) m = c.ye === 4 ? 'Chặng 5 sắp xong: chỉ cần xoay tầng trên cho khớp màu.' : 'Chặng 5 chưa xong: mới có ' + c.ye + '/4 viên cạnh vàng giống màu ô giữa.';
+    else if (k === 6) m = 'Chặng 6 chưa xong: mới có ' + c.yc + '/4 viên góc vàng đúng chỗ.';
+    else m = c.cu === 4 ? 'Chặng 7 sắp xong: chỉ cần xoay tầng trên cho khớp màu.' : 'Chặng 7 chưa xong: mới có ' + c.cu + '/4 viên góc có ô vàng quay lên trên.';
+    return head + m;
+  }
+  function stageChips() {
+    var row = el('div', 'schips'); row.appendChild(el('span', 'sclab', 'Các chặng phải qua:'));
+    for (var k = 1; k <= S.goal; k++) row.appendChild(el('span', 'sc' + (k <= S.ms ? ' ok' : k === S.ms + 1 ? ' cur' : ''), k <= S.ms ? k + ' ✓' : String(k)));
+    return row;
+  }
+  function formulaBox(id) {
+    var f = Core.FORMULAS[id], b = el('div', 'fbox');
+    b.appendChild(el('b', '', f.name));
+    var row = el('div', 'chips'); f.moves.forEach(function (mv) { row.appendChild(el('span', 'chip', MV[mv])); });
+    b.appendChild(row); return b;
+  }
+  function dots(n, of) { var f = document.createDocumentFragment(); for (var i = 0; i < of; i++) f.appendChild(el('span', 'dot' + (i < n ? ' on' : ''))); return f; }
+
+  function renderStat() {
+    var s = $('#stat'); s.textContent = '';
+    if (S.mode === 'guided') s.textContent = 'Vòng ' + S.round + '/2';
+    else if (S.mode === 'solve') {
+      if (S.kind === 'test') s.appendChild(dots(Math.min(3, stg(S.goal).streak), 3));
+      if (S.kind === 'exam') s.appendChild(dots(Math.min(3, prog.exam.wins || 0), 3));
+      s.appendChild(el('span', '', fmt(S.done ? S.elapsed : (S.t0 ? Date.now() - S.t0 : 0))));
+    } else if (S.mode === 'intro') s.textContent = (S.introPage + 1) + '/' + INTRO.length;
+  }
+  function render() {
+    // tiêu đề, thẻ
+    var names = { exam: 'Thi tốt nghiệp', review: 'Ôn tập', free: 'Luyện tự do' };
+    $('#ttl').textContent = S.mode === 'intro' ? 'Làm quen với khối' : (S.mode === 'solve' && S.kind !== 'test') ? names[S.kind] : 'Chặng ' + S.stage + ' · ' + STAGES[S.stage].name;
+    var tabs = $('#tabs'), isStage = S.mode === 'learn' || S.mode === 'guided' || S.mode === 'real' || (S.mode === 'solve' && S.kind === 'test');
+    tabs.hidden = !isStage;
+    if (isStage) {
+      var curTab = S.mode === 'solve' ? 'test' : S.mode;
+      Array.prototype.forEach.call(tabs.children, function (b) { b.setAttribute('aria-selected', b.dataset.tab === curTab ? 'true' : 'false'); var sg = stg(S.stage), okTab = b.dataset.tab === 'learn' ? sg.seen : b.dataset.tab === 'guided' ? sg.g >= 2 : b.dataset.tab === 'real' ? sg.real : sg.passed; b.textContent = b.dataset.label + (okTab ? ' ✓' : ''); });
+    }
+    renderStat();
+    // khối
+    var e = S.q[S.qi], arrow = null, focus = [];
+    var showPlan = S.plan && !S.done && ((S.mode === 'learn' && S.demo) || S.mode === 'guided' || (S.mode === 'solve' && S.hint > 0 && !S.stray));
+    if (showPlan) { focus = S.plan.focus; if (e && (S.mode === 'learn' || S.hint === 2 || S.reveal)) arrow = e.mv; }
+    if (S.mode === 'intro' && INTRO[S.introPage][2] === 'p') focus = [Core.key([0, 1, 1]), Core.key([1, 1, 1])].map(function (k) { return S.cube.at[k]; });
+    if (S.mode === 'intro' && INTRO[S.introPage][2] === 'c') focus = Core.G.centers.map(function (i) { return i; });
+    R.arrow = arrow; R.focus = focus;
+    // bàn phím xoay
+    var pad = $('#pad'); pad.hidden = S.mode === 'learn' || S.mode === 'real' || !!S.done;
+    Array.prototype.forEach.call(pad.children, function (b) { b.classList.toggle('exp', arrow === b.dataset.mv); b.disabled = !!R.look; });
+    mark();
+    $('#peek').hidden = (S.mode === 'learn' && !S.demo) || S.mode === 'real';
+    // bảng hướng dẫn
+    var c = $('#coach'); c.textContent = '';
+    if (S.done) renderDone(c);
+    else if (S.mode === 'intro') renderIntro(c);
+    else if (S.mode === 'learn') { if (S.demo) renderDemo(c); else renderLesson(c); }
+    else if (S.mode === 'guided') renderGuided(c);
+    else if (S.mode === 'real') renderReal(c);
+    else renderSolve(c);
+    var pl = S.moved && !S.done ? $('.plan', c) : null;
+    c.scrollTop = pl ? Math.max(0, pl.offsetTop - 6) : 0;
+  }
+  function renderIntro(c) {
+    var pg = INTRO[S.introPage], pgi = S.introPage;
+    if (pg[2] === 'v') { R.pose(1.0, -1.0); setTimeout(function () { if (S.mode === 'intro' && S.introPage === pgi) R.pose(0, 0); }, 2200); } else R.pose(0, 0);
+    c.appendChild(el('p', 'sub', 'Làm quen với khối, trang ' + (S.introPage + 1) + '/' + INTRO.length));
+    c.appendChild(el('h3', '', pg[0])); c.appendChild(el('p', '', pg[1]));
+    var row = el('div', 'btns');
+    if (S.introPage > 0) row.appendChild(btn('‹ Trước', 'quiet', function () { S.introPage--; render(); }));
+    if (S.introPage < INTRO.length - 1) row.appendChild(btn('Tiếp ›', 'primary', function () { S.introPage++; render(); }));
+    else row.appendChild(btn('Vào Chặng 1', 'primary', function () { prog.intro = true; save(); openStage(1, 'learn'); }));
+    row.appendChild(btn('Xáo khối', 'quiet', function () { setCube(Core.apply(Core.newCube(), Core.scramble())); render(); }));
+    row.appendChild(btn('Về khối sạch', 'quiet', function () { setCube(Core.newCube()); render(); }));
+    c.appendChild(row);
+  }
+  // ---- bấm vào chữ thì khối minh họa đúng dòng chữ đó ----
+  var STORY = {}, sceneTimer = null;
+  function kinds(pl) { return pl.segs.map(function (g) { return g.f ? 'f' : g.moves.every(function (m) { return m.charAt(0) === 'y'; }) ? 'y' : g.moves.every(function (m) { return m.charAt(0) === 'U'; }) ? 'u' : 'p'; }).join(''); }
+  function baseState(k, name) {
+    var key = k + name; if (STORY[key]) return STORY[key];
+    var b = BASES[k][name], found = null;
+    for (var t = 0; t < 120 && !found; t++) {
+      var s = Core.findCase(k, b.id); if (!s) continue;
+      var pl = Core.plan(s, { last7: k === 7 }); if (!pl || pl.id !== b.id) continue;
+      if (b.re && !b.re.test(kinds(pl))) continue;
+      if (b.vis) { var p = pl.focus.length ? s.p[pl.focus[0]] : null; if (!p || !(p[0] === 1 || p[1] === 1 || p[2] === 1)) continue; }
+      if (b.ok && !b.ok(s, pl)) continue;
+      found = s;
+    }
+    return (STORY[key] = found);
+  }
+  function buildScene(k, sp) {
+    var out = { mask: maskFor(k), focus: [], pose: [0, 0], moves: [] }, ctx = { last7: k === 7 }, s, pl, i, mv, n = 0;
+    if (sp.legend) { out.cube = Core.newCube(); out.mask = null; out.moves = [sp.legend, Core.inv(sp.legend)]; return out; }
+    if (sp.solved) {
+      out.cube = Core.newCube(); out.mask = null;
+      if (sp.focus === 'ud') out.focus = [out.cube.at[Core.key([0, 1, 0])], out.cube.at[Core.key([0, -1, 0])]];
+      if (sp.scramble) out.moves = Core.scramble(null, 12);
+      return out;
+    }
+    if (sp.b === 'goal') { out.cube = Core.clone(goalCube(k)); if (k <= 2 || sp.bot) out.pose = [0, -0.98]; return out; }
+    if (sp.b === 'start') {
+      s = Core.stageStart(k); if (!s) return null; out.cube = Core.clone(s);
+      while (Core.stageIndex(s) < k && n++ < 60) { pl = Core.plan(s, ctx); if (!pl) break; mv = Core.planMoves(pl); out.moves = out.moves.concat(mv); Core.apply(s, mv); ctx.last7 = pl.stage === 7; }
+      return out;
+    }
+    var base = baseState(k, sp.b); if (!base) return null;
+    s = Core.clone(base); var after = sp.after || 0;
+    while ((pl = Core.plan(s, ctx)) && pl.stage === k && (typeof after === 'number' ? n < after : pl.id !== after) && n < 40) { Core.apply(s, Core.planMoves(pl)); ctx.last7 = pl.stage === 7; n++; }
+    if (!pl || pl.stage !== k) { out.cube = s; return out; }
+    var show = sp.show === 'f' ? Math.max(0, pl.segs.findIndex(function (g) { return !!g.f; })) : (sp.show || 0);
+    for (i = 0; i < show && i < pl.segs.length; i++) Core.apply(s, pl.segs[i].moves);
+    out.cube = Core.clone(s);
+    out.focus = sp.focus === 'wEdges' ? Core.G.wEdges : sp.focus === 'ycross' ? Core.G.yEdges.concat([s.at[Core.key([0, 1, 0])]]) : pl.focus;
+    if (sp.until) {
+      var t = Core.clone(s), p2 = pl, c2 = { last7: ctx.last7 }; n = 0;
+      while (p2 && p2.stage === k && p2.id !== sp.until && n++ < 30) { mv = Core.planMoves(p2); out.moves = out.moves.concat(mv); Core.apply(t, mv); c2.last7 = p2.stage === 7; p2 = Core.plan(t, c2); }
+    } else if (sp.play) {
+      var end = sp.play === 'all' ? pl.segs.length : Math.min(pl.segs.length, show + sp.play);
+      for (i = show; i < end; i++) out.moves = out.moves.concat(pl.segs[i].moves);
+    }
+    return out;
+  }
+  function stopScene() { clearTimeout(sceneTimer); S.scene = null; }
+  function playScene(sp, node) {
+    clearTimeout(sceneTimer); clearTimeout(demoTimer);
+    var sc = buildScene(S.stage, sp);
+    if (!sc) { toast('Chưa tạo được hình, bấm lại nhé'); return; }
+    S.scene = { moves: sc.moves, i: 0 };
+    setCube(sc.cube); R.mask = sc.mask; R.focus = sc.focus; R.interactive = false; R.pose(sc.pose[0], sc.pose[1]);
+    Array.prototype.forEach.call(document.querySelectorAll('#coach .ill.on'), function (n) { n.classList.remove('on'); });
+    if (node) node.classList.add('on');
+    R.arrow = sc.moves[0] || null;
+    if (sc.moves.length) sceneTimer = setTimeout(sceneStep, 950);
+  }
+  function sceneStep() {
+    var sc = S.scene; if (!sc || S.view !== 'play') return;
+    if (R.busy()) { sceneTimer = setTimeout(sceneStep, 120); return; }
+    if (sc.i >= sc.moves.length) { R.arrow = null; return; }
+    var mv = sc.moves[sc.i]; R.arrow = null;
+    R.animate(mv, reduce ? 240 : 480, function () { if (S.scene !== sc) return; sc.i++; R.arrow = sc.moves[sc.i] || null; if (sc.i < sc.moves.length) sceneTimer = setTimeout(sceneStep, sc.moves.length > 20 ? 260 : 480); });
+  }
+  function ill(node, sp) {
+    if (!sp) return node;
+    node.classList.add('ill'); node.tabIndex = 0; node.setAttribute('role', 'button');
+    node.addEventListener('click', function (ev) { if (ev.target && ev.target.tagName === 'INPUT') return; playScene(sp, node); });
+    node.addEventListener('keydown', function (ev) { if (ev.key === 'Enter') { ev.preventDefault(); playScene(sp, node); } });
+    return node;
+  }
+  function illList(tag, cls, arr, specs) { var l = el(tag, cls); arr.forEach(function (t, i) { l.appendChild(ill(el('li', '', t), specs && specs[i])); }); return l; }
+  function renderLesson(c) {
+    var k = S.stage, st = STAGES[k], sn = SCN[k];
+    c.appendChild(goalCard(k, 'Việc của bạn ở màn Xem (trên máy, chưa cần khối thật): đọc từng bước, rồi bấm xem máy làm mẫu.', 'Khối lớn ở trên là khối khi xong chặng này.' + (k <= 2 ? ' Bạn đang nhìn nó từ dưới lên.' : '') + (k <= 3 ? ' Ô màu xám là ô chưa cần để ý.' : '')));
+    c.appendChild(el('p', 'tap', 'Bấm vào từng dòng chữ có dấu ▸ để xem hình minh họa trên khối.'));
+    c.appendChild(el('p', 'sub', 'Làm từng bước'));
+    c.appendChild(illList('ol', 'how', st.steps, sn.steps));
+    if (st.ifs.length) {
+      c.appendChild(el('p', 'sub', k === 7 ? 'Nhớ nhé' : 'Nếu gặp trường hợp khác'));
+      c.appendChild(illList('ul', 'ifs', st.ifs, sn.ifs));
+    }
+    if (st.f.length) c.appendChild(el('p', 'sub', 'Công thức cần nhớ'));
+    st.f.forEach(function (id) { c.appendChild(ill(formulaBox(id), sn.f[id])); });
+    c.appendChild(el('p', 'sub', 'Xem máy làm mẫu, có lời giải thích từng bước'));
+    var row = el('div', 'cases');
+    st.cases.forEach(function (cs) { var b = el('button', 'case', cs[1]); b.type = 'button'; b.addEventListener('click', function () { startDemo(cs[0]); demoPlay(true); }); row.appendChild(b); });
+    var all = el('button', 'case', 'Cả chặng từ đầu đến cuối'); all.type = 'button'; all.addEventListener('click', function () { startDemo('all'); demoPlay(true); }); row.appendChild(all);
+    c.appendChild(row);
+    var r2 = el('div', 'btns'); r2.appendChild(btn('Sang Làm theo ›', 'primary', function () { setTab('guided'); })); c.appendChild(r2);
+  }
+  function renderDemo(c) {
+    c.appendChild(el('p', 'sub', S.demo.over ? 'Làm mẫu xong' : 'Máy đang làm mẫu'));
+    c.appendChild(planBlock(true));
+    var row = el('div', 'btns');
+    if (S.demo.over) row.appendChild(btn('Xem lại', 'primary', function () { startDemo(S.demo.id, true); demoPlay(true); }));
+    else {
+      row.appendChild(btn(S.demo.playing ? 'Dừng' : 'Chạy tiếp', 'primary', function () { demoPlay(!S.demo.playing); }));
+      var stp = btn('Từng bước ›', '', function () { S.demo.playing = false; clearTimeout(demoTimer); demoStep(); }); row.appendChild(stp);
+    }
+    row.appendChild(btn('Ví dụ khác', '', function () { var id = S.demo.id; startDemo(id); demoPlay(true); }));
+    row.appendChild(btn('‹ Bài học', 'quiet', function () { setTab('learn'); }));
+    c.appendChild(row);
+  }
+  function renderGuided(c) {
+    c.appendChild(goalCard(S.stage, 'Việc của bạn ở màn Làm theo (trên máy): ' + (S.round === 1 ? 'xoay theo mũi tên hồng' : 'đọc lời nhắc rồi tự xoay, không còn mũi tên') + ', đến khi khối giống hình bên.'));
+    c.appendChild(el('p', 'gprog', 'Vòng ' + S.round + '/2. ' + progLine(S.stage)));
+    c.appendChild(planBlock(S.hint === 2 || S.reveal));
+    if (S.round === 2 && !S.reveal) { var row = el('div', 'btns'); row.appendChild(btn('Chỉ cho mình bước này', 'quiet', function () { S.reveal = true; render(); })); c.appendChild(row); }
+  }
+  function renderSolve(c) {
+    var task = S.kind === 'test' ? 'Việc của bạn ở màn Tự làm (trên máy): tự giải khối bị xáo đến hết chặng ' + S.goal + '. ' + (stg(S.goal).passed ? 'Bạn đã qua chặng này. Đúng 3 khối liên tiếp thì được sao ★.' : 'Giải đúng 1 khối, không bấm Gợi ý, là qua chặng.')
+      : S.kind === 'exam' ? 'Việc của bạn: giải xong 3 khối. Bài thi không có gợi ý.'
+      : S.kind === 'review' ? 'Việc của bạn: giải xong 1 khối, không bấm Gợi ý.' : 'Việc của bạn: giải xong cả khối. Cần thì bấm Gợi ý.';
+    c.appendChild(goalCard(S.goal, task));
+    c.appendChild(stageChips());
+    c.appendChild(el('p', 'gprog', 'Chặng ' + Math.min(7, S.ms + 1) + '. ' + progLine(Math.min(7, S.ms + 1))));
+    if (S.checkMsg) c.appendChild(el('p', 'check', S.checkMsg));
+    if (S.kind === 'test' && S.assisted) c.appendChild(el('p', 'note', 'Khối này bạn đã bấm Gợi ý nên không được tính.'));
+    if (S.kind === 'review' && S.assisted) c.appendChild(el('p', 'note', 'Khối này bạn đã bấm Gợi ý nên chưa tính là ôn xong.'));
+    if (S.hint > 0 && S.stray) {
+      c.appendChild(el('p', '', 'Bạn vừa xoay sai một bước trong công thức. Bấm Quay lại chỗ đúng để làm tiếp.'));
+      var r0 = el('div', 'btns');
+      r0.appendChild(btn('Quay lại chỗ đúng', 'primary', backToGood));
+      r0.appendChild(btn('Cứ gợi ý từ chỗ này', '', function () { S.stray = null; computePlan(); render(); }));
+      c.appendChild(r0);
+    } else if (S.hint > 0) c.appendChild(planBlock(S.hint === 2));
+    var row = el('div', 'btns');
+    if (S.kind !== 'exam' && S.hint < 2) row.appendChild(btn(S.hint === 0 ? 'Gợi ý' : 'Chỉ từng bước', S.hint === 0 ? '' : 'primary', function () { S.hint++; if (S.kind !== 'free') S.assisted = true; if (!S.plan) computePlan(); render(); }));
+    row.appendChild(btn('Kiểm tra khối', '', function () { S.checkMsg = checkReport(); render(); }));
+    var u = btn('↶ Lùi một bước', '', undo); u.disabled = !S.history.length; row.appendChild(u);
+    row.appendChild(btn('Khối khác', 'quiet', function () { newSolve(); render(); }));
+    c.appendChild(row);
+  }
+  function renderReal(c) {
+    var k = S.stage, st = STAGES[k], g = stg(k);
+    c.appendChild(goalCard(k, 'Việc của bạn ở màn Khối thật: đặt máy xuống, làm chặng ' + k + ' trên khối rubik thật, đến khi khối thật giống hình bên.'));
+    if (!g.passed) c.appendChild(el('p', 'check', 'Bạn chưa qua màn Tự làm của chặng này. Nên tự làm được trên máy trước, rồi mới làm trên khối thật.'));
+    c.appendChild(el('p', 'tap', 'Bấm vào từng dòng chữ có dấu ▸ để xem hình minh họa trên khối.'));
+    c.appendChild(el('p', 'sub', 'Máy và khối thật khác nhau thế nào'));
+    c.appendChild(illList('ul', 'ifs', ['Khối trên máy là khối để tập. Máy tự xáo nó, nên nó không giống khối thật bạn đang cầm.',
+      'Vì thế các bước xoay trên máy và trên khối thật sẽ khác nhau. Cách làm thì giống hệt.',
+      'Máy không nhìn thấy khối thật. Bạn tự kiểm tra bằng hình kết quả và các câu ở dưới.'], [{ solved: 1, scramble: 1 }, { b: 'start' }, { b: 'goal' }]));
+    c.appendChild(el('p', 'sub', 'Làm từng bước'));
+    c.appendChild(illList('ol', 'how', ['Cầm khối thật giống như trên máy: ô giữa vàng ở trên, ô giữa trắng ở dưới. Mặt quay về phía bạn là mặt trước.',
+      'Xáo khối thật: xoay lung tung khoảng 20 lần.' + (k > 1 ? ' Rồi làm lại chặng 1' + (k > 2 ? ' đến chặng ' + (k - 1) : '') + ' trên khối thật.' : ''),
+      'Làm chặng ' + k + ' trên khối thật, theo các bước đã học ở màn Xem.',
+      st.cases.length ? 'Bí ở đâu thì nhìn khối thật: nó đang giống trường hợp nào? Bấm tên trường hợp đó ở dưới để xem máy làm mẫu. Xem xong, làm lại trên khối thật.' : 'Bí ở đâu thì bấm xem máy làm mẫu ở dưới. Xem xong, làm lại trên khối thật.',
+      'Xong thì tự kiểm tra bằng các câu ở dưới.'], [{ solved: 1, focus: 'ud' }, { solved: 1, scramble: 1 }, { b: 'start' }, null, { b: 'goal' }]));
+    var row = el('div', 'cases');
+    st.cases.forEach(function (cs) { var b = el('button', 'case', cs[1]); b.type = 'button'; b.addEventListener('click', function () { setTab('learn'); startDemo(cs[0]); demoPlay(true); }); row.appendChild(b); });
+    var all = el('button', 'case', 'Cả chặng từ đầu đến cuối'); all.type = 'button'; all.addEventListener('click', function () { setTab('learn'); startDemo('all'); demoPlay(true); }); row.appendChild(all);
+    c.appendChild(row);
+    c.appendChild(el('p', 'sub', 'Tự kiểm tra khối thật'));
+    var boxes = [], ok = btn(g.real ? 'Đã ghi nhận: làm được trên khối thật ✓' : 'Mình đã làm được trên khối thật', 'primary', function () { g.real = true; save(); render(); });
+    REALCHK[k].forEach(function (t, i) {
+      var lab = el('label', 'rchk'), cb = el('input'); cb.type = 'checkbox'; cb.id = 'rc-' + k + '-' + i; cb.checked = !!g.real;
+      cb.addEventListener('change', function () { ok.disabled = !!g.real || !boxes.every(function (b) { return b.checked; }); });
+      boxes.push(cb); lab.appendChild(cb); lab.appendChild(ill(el('span', '', t), { b: 'goal', bot: t.indexOf('Lật') === 0 })); c.appendChild(lab);
+    });
+    ok.disabled = true;
+    var r2 = el('div', 'btns'); r2.appendChild(ok);
+    if (g.real && k < 7 && unlocked(k + 1)) r2.appendChild(btn('Học chặng ' + (k + 1), '', function () { openStage(k + 1, 'learn'); }));
+    if (!g.passed) r2.appendChild(btn('Sang Tự làm trên máy', '', function () { setTab('test'); }));
+    c.appendChild(r2);
+    c.appendChild(el('p', 'sub', 'Nút trên máy là động tác nào trên khối thật'));
+    c.appendChild(illList('ul', 'ifs', LEGEND.map(function (x) { return x[0]; }), LEGEND.map(function (x) { return { legend: x[1] }; })));
+  }
+  function renderDone(c) {
+    var d = S.done, w = el('div', 'result'), row = el('div', 'btns'), k = S.stage;
+    function add(h, p) { w.appendChild(el('h3', '', h)); if (p) w.appendChild(el('p', '', p)); }
+    if (d.type === 'guided') {
+      if (S.round === 1) { add('Xong vòng 1!', 'Máy đã kiểm tra: khối đúng kết quả cần đạt. Vòng 2 không còn mũi tên. Bạn đọc lời nhắc rồi tự xoay.'); row.appendChild(btn('Vào vòng 2', 'primary', function () { S.round = 2; newGuided(); render(); })); }
+      else { add('Xong vòng 2!', 'Máy đã kiểm tra: khối đúng kết quả cần đạt. Bây giờ bạn thử tự giải nhé.'); row.appendChild(btn('Sang Tự làm', 'primary', function () { setTab('test'); })); }
+      row.appendChild(btn('Luyện thêm một khối', '', function () { newGuided(); render(); }));
+    } else if (d.type === 'test') {
+      var again = function () { newSolve(); render(); };
+      var nextBtn = function (cls) { return k < 7 ? btn('Học chặng ' + (k + 1), cls, function () { openStage(k + 1, 'learn'); }) : btn('Vào thi tốt nghiệp', cls, function () { openSolve('exam'); }); };
+      if (d.passed) {
+        add('Qua chặng ' + k + '!', 'Máy đã kiểm tra: khối của bạn đúng kết quả cần đạt. ' + (k < 7 ? 'Chặng ' + (k + 1) + ' đã mở.' : 'Bài thi tốt nghiệp đã mở.') + ' Trước khi đi tiếp, hãy làm lại chặng này trên khối rubik thật.');
+        row.appendChild(btn('Bước 4: làm trên khối thật', 'primary', function () { setTab('real'); })); row.appendChild(nextBtn('')); row.appendChild(btn('Giải thêm để lấy sao ★', '', again));
+      } else if (d.clean) {
+        if (d.star) add('Bạn được sao ★', 'Bạn giải đúng 3 khối liên tiếp. Chặng này bạn đã thành thạo.');
+        else add('Đúng rồi! ' + Math.min(3, d.streak) + '/3', d.streak >= 3 ? 'Máy đã kiểm tra: khối đúng. Bạn đã có sao ở chặng này.' : 'Máy đã kiểm tra: khối đúng. Giải đúng thêm ' + (3 - d.streak) + ' khối liên tiếp nữa để lấy sao ★.');
+        row.appendChild(btn('Khối tiếp theo', 'primary', again)); row.appendChild(nextBtn(''));
+      } else {
+        add('Xong khối này', stg(k).passed ? 'Khối đúng rồi. Lần này bạn có bấm Gợi ý nên không tính vào chuỗi lấy sao.' : 'Khối đúng rồi, nhưng bạn có bấm Gợi ý. Giải đúng 1 khối, không bấm Gợi ý, là qua chặng.');
+        row.appendChild(btn('Thử khối khác', 'primary', again)); if (stg(k).passed) row.appendChild(nextBtn(''));
+      }
+    } else if (d.type === 'exam') {
+      if (d.passed) { add('Tốt nghiệp!', 'Bạn giải được mọi khối 3×3. Hẹn ôn lại sau 1, 3 và 7 ngày để nhớ thật lâu.'); }
+      else { add('Xong khối ' + Math.min(d.wins, 3) + '/3 · ' + fmt(S.elapsed), d.wins < 3 ? 'Còn ' + (3 - d.wins) + ' khối nữa.' : 'Thành tích tốt nhất: ' + fmt(prog.exam.best) + '.'); row.appendChild(btn('Khối tiếp theo', 'primary', function () { newSolve(); render(); })); }
+    } else if (d.type === 'review') {
+      if (d.clean) add('Ôn xong! ' + fmt(S.elapsed), 'Bài ôn này đã được ghi lại.');
+      else { add('Xong khối này', 'Lần này bạn có bấm Gợi ý nên chưa được tính. Thử lại với khối khác nhé.'); row.appendChild(btn('Thử lại', 'primary', function () { newSolve(); render(); })); }
+    } else { add('Giải xong! ' + fmt(S.elapsed)); row.appendChild(btn('Khối khác', 'primary', function () { newSolve(); render(); })); }
+    row.appendChild(btn('Về bảng chặng', 'quiet', function () { show('home'); }));
+    w.appendChild(row); c.appendChild(w);
+  }
+
+  // ---- bảng chặng ----
+  function renderHome() {
+    var b = $('#board'); b.textContent = '';
+    function tile(num, name, cls, meta, fn, locked) {
+      var t = el('button', 'tile ' + cls + (locked ? ' lock' : '')); t.type = 'button';
+      t.appendChild(el('span', 'num', num)); t.appendChild(el('span', 'nm', name));
+      var m = el('span', 'meta'); if (typeof meta === 'string') m.textContent = meta; else if (meta) m.appendChild(meta); t.appendChild(m);
+      if (locked) { t.setAttribute('aria-disabled', 'true'); t.addEventListener('click', function () { toastHome(locked); }); } else t.addEventListener('click', fn);
+      b.appendChild(t);
+    }
+    tile('0', 'Làm quen', prog.intro ? 'done' : 'doing', prog.intro ? 'Đã xem' : 'Bắt đầu ở đây', openIntro);
+    for (var k = 1; k <= 7; k++) (function (k) {
+      var s = stg(k), open = unlocked(k);
+      var cls = s.passed ? 'done' : (s.streak > 0 || s.g > 0 || (open && (k === 1 ? prog.intro : true))) ? 'doing' : 'open';
+      tile(String(k), STAGES[k].name, cls, !open ? 'Khóa' : s.passed ? ('Máy ✓' + (s.real ? ' Thật ✓' : '') + (s.star ? ' ★' : '')) : dots(Math.min(3, s.streak), 3), function () { openStage(k, 'learn'); }, open ? null : 'Qua chặng ' + (k - 1) + ' để mở chặng này');
+    })(k);
+    var ex = prog.exam;
+    tile('Thi', 'Tốt nghiệp', 'exam' + (ex.at ? ' done' : ''), !examOpen() ? 'Khóa' : ex.at ? 'Nhanh nhất ' + fmt(ex.best) : dots(Math.min(3, ex.wins || 0), 3), function () { openSolve('exam'); }, examOpen() ? null : 'Qua chặng 7 để mở bài thi');
+    // người học
+    var who = $('#who'); who.textContent = '';
+    who.appendChild(el('h2', '', 'Người học ở máy này'));
+    who.appendChild(el('p', 'whoname', profile.name || 'Chưa đặt tên'));
+    var wr = el('div', 'btns'), inp = el('input', 'winp'); inp.id = 'whoName'; inp.type = 'text'; inp.maxLength = 24; inp.value = profile.name; inp.placeholder = 'Gõ tên người học'; inp.setAttribute('aria-label', 'Tên người học');
+    var sv = btn('Lưu tên', '', function () { renameProfile(inp.value.trim().slice(0, 24)); });
+    inp.addEventListener('keydown', function (ev) { if (ev.key === 'Enter') { ev.preventDefault(); sv.click(); } });
+    wr.appendChild(inp); wr.appendChild(sv); who.appendChild(wr);
+    who.appendChild(el('p', 'tip', 'Mỗi người học có tiến độ riêng. Việc làm ở máy này không làm thay đổi tiến độ của người học khác, dù ở máy nào.'));
+    var others = plist.filter(function (p) { return p.id !== profile.id; });
+    if (others.length) {
+      who.appendChild(el('p', 'sub', 'Đổi sang người học khác'));
+      var orow = el('div', 'btns');
+      others.forEach(function (p) { orow.appendChild(btn(p.name || 'Chưa đặt tên', 'quiet', function () { switchProfile(p); })); });
+      who.appendChild(orow);
+    }
+    var ar = el('div', 'btns'); ar.appendChild(btn('Thêm người học mới', 'quiet', addProfile)); who.appendChild(ar);
+    // ôn tập
+    var rv = $('#reviews'); rv.textContent = '';
+    [1, 3, 7].forEach(function (d) {
+      var r = el('button', 'rev'); r.type = 'button'; r.appendChild(el('b', '', 'Sau ' + d + ' ngày'));
+      var txt, due = false;
+      if (!ex.at) { txt = 'Mở khi tốt nghiệp'; r.disabled = true; }
+      else if (prog.rev[d]) { txt = 'Đã ôn'; r.classList.add('ok'); }
+      else { var left = Math.ceil((ex.at + d * DAY - Date.now()) / DAY); if (left <= 0) { txt = 'Ôn ngay hôm nay'; due = true; r.classList.add('due'); } else { txt = 'Còn ' + left + ' ngày'; r.disabled = true; } }
+      r.appendChild(el('span', '', txt));
+      if (due || prog.rev[d]) r.addEventListener('click', function () { openSolve('review', d); });
+      rv.appendChild(r);
+    });
+    $('#unlockAll').textContent = prog.all ? 'Khóa lại theo thứ tự chặng' : 'Phụ huynh: mở khóa mọi chặng';
+  }
+  var homeToastTimer = null;
+  function toastHome(msg) { var n = $('#homeNote'); n.textContent = msg; clearTimeout(homeToastTimer); homeToastTimer = setTimeout(function () { n.textContent = ''; }, 2400); }
+
+  // ================= gắn sự kiện =================
+  (function init() {
+    var pad = $('#pad');
+    PAD.forEach(function (p) {
+      var b = el('button', 'key'); b.type = 'button'; b.dataset.mv = p[0]; b.setAttribute('aria-label', p[3]); b.title = p[3];
+      b.appendChild(el('i', '', p[1])); b.appendChild(el('span', '', p[2]));
+      b.addEventListener('click', function () { request(p[0]); }); pad.appendChild(b);
+    });
+    var tabs = $('#tabs');
+    [['learn', 'Xem'], ['guided', 'Làm theo'], ['test', 'Tự làm'], ['real', 'Khối thật']].forEach(function (t) {
+      var b = el('button', 'tab', t[1]); b.type = 'button'; b.dataset.tab = t[0]; b.dataset.label = t[1]; b.setAttribute('role', 'tab');
+      b.addEventListener('click', function () { setTab(t[0]); }); tabs.appendChild(b);
+    });
+    R.onMove = request;
+    R.onBlocked = function (axis) { toast(MID[axis] + ' Sáu ô giữa (đang có viền hồng) luôn đứng yên.', 5200); R.flash(Core.G.centers, 5200); };
+    $('#back').addEventListener('click', function () { show('home'); });
+    $('#freeBtn').addEventListener('click', function () { openSolve('free'); });
+    $('#unlockAll').addEventListener('click', function () { prog.all = !prog.all; save(); renderHome(); });
+    var armed = false;
+    $('#resetAll').addEventListener('click', function () {
+      if (!armed) { armed = true; this.textContent = 'Bấm lần nữa để xóa hết tiến độ'; var me = this; setTimeout(function () { armed = false; me.textContent = 'Xóa tiến độ'; }, 3000); return; }
+      armed = false; this.textContent = 'Xóa tiến độ'; prog = fresh(); prog.z = Date.now(); RES_ = {}; LAST = null; GOALS = {}; persistResume(); save(); renderHome();
+    });
+    document.addEventListener('keydown', function (ev) {
+      if (S.view !== 'play' || ev.ctrlKey || ev.metaKey || ev.altKey) return;
+      var k = ev.key.toLowerCase(), map = { u: 'U', d: 'D', l: 'L', r: 'R', f: 'F', b: 'B', y: 'y' };
+      if (map[k]) { request(map[k] + (ev.shiftKey ? "'" : '')); ev.preventDefault(); }
+    });
+    $('#look').addEventListener('click', function () { setLook(!R.look); if (R.look) toast('Kéo ngón tay trên khối để nhìn mọi phía', 2600); });
+    loadProfile(); loadLocal(); loadResume(); renderHome(); initCloud();
+    function boot(data) {
+      if (data && data.r) { RES_ = data.r; if (data.last) LAST = data.last; }
+      var L = LAST;
+      if (!L || L.view !== 'play' || Date.now() - (L.at || 0) > 3 * 3600000) return;
+      try {
+        if (L.mode === 'intro') openIntro();
+        else if (L.mode === 'solve' && L.kind !== 'test') { if (L.kind !== 'exam' || examOpen()) openSolve(L.kind, L.review); }
+        else if (L.stage >= 1 && L.stage <= 7 && unlocked(L.stage)) openStage(L.stage, L.mode === 'solve' ? 'test' : L.mode);
+      } catch (e) { show('home'); }
+    }
+    var hot = window.claude && window.claude.hot;
+    if (hot && hot.snapshot) { try { hot.snapshot(function () { return { r: RES_, last: LAST }; }); } catch (e) { } }
+    if (hot && hot.ready) hot.ready(boot); else boot((hot && hot.data) || {});
+    window.__rubik = { S: S, R: R, mergeProg: mergeProg, profile: function () { return profile; }, addProfile: addProfile, switchProfile: switchProfile, plist: function () { return plist; }, SCN: SCN, buildScene: buildScene, request: request, openStage: openStage, openSolve: openSolve, setTab: setTab, prog: function () { return prog; } };
+  })();
+})();
+
+</script>
+</body>
+</html>
