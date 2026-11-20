@@ -156,6 +156,8 @@ p { margin: 0; }
 .segs li.cur { border-left-color: var(--arrow); color: var(--ink); font-weight: 500; }
 .segs li.done { color: var(--ok); border-left-color: var(--ok); }
 .segs li.done::before { content: "✓ Bước " counter(seg) ". "; }
+.segs li.cur { font-size: 17px; line-height: 1.35; }
+.segs .why { display: block; font-size: 14px; font-weight: 400; color: var(--muted); margin-top: 2px; }
 .check { border: 1.5px solid var(--ink); border-radius: 12px; padding: 8px 10px; font-size: 14px; font-weight: 500; background: var(--surface); }
 .chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; align-items: center; }
 .chip { border: 1.5px solid var(--line); border-radius: 8px; padding: 2px 7px; font-size: 13px; font-weight: 600; color: var(--ink); background: var(--surface); white-space: nowrap; }
@@ -414,7 +416,12 @@ var Core = (function () {
     for (var k = 0; k < opts.length; k++) { var t = run(s, opts[k]); if (pred(t)) return { mv: opts[k], s: t }; }
     return null;
   }
-  function seg(t, moves, f, reps) { return { t: t, moves: moves.slice(), f: f || null, reps: reps || 0 }; }
+  // t: việc cần làm (ngắn). x.n: lời giải thích thêm. x.m: chỗ cần khoanh vòng tròn ('UFR' = một chỗ, 'UF:U' = một ô). x.h: mặt cần nhìn.
+  function seg(t, moves, f, reps, x) {
+    if (f && typeof f === 'object') { x = f; f = null; }
+    x = x || {};
+    return { t: t, moves: moves.slice(), f: f || null, reps: reps || 0, n: x.n || '', marks: x.m || [], hot: x.h || '' };
+  }
   function mk(stage, id, title, segs, focus) {
     segs = segs.filter(function (g) { return g.moves.length > 0; });
     return { stage: stage, id: id, title: title, segs: segs, focus: focus || [] };
@@ -441,9 +448,9 @@ var Core = (function () {
             var i = t.at[key(P(slot))];
             var yy = firstOpt(t, YOPT, function (q) { return veq(q.p[i], [0, 1, 1]); });
             cands.push(mk(1, 'c1-drop', 'Thả cánh hoa xuống đáy', [
-              seg('Xoay tầng trên đến khi màu ở mặt bên của một cánh hoa giống ô giữa ngay dưới nó.', u),
-              seg('Xoay cả khối để cánh hoa đó quay về phía bạn.', yy.mv),
-              seg('Xoay mặt trước 2 lần. Cánh hoa xuống đáy, đúng chỗ.', ['F', 'F'])
+              seg('Xoay tầng trên cho cánh hoa viền hồng khớp màu.', u, { n: 'Khớp màu: màu bên của cánh hoa giống ô giữa ngay dưới nó.' }),
+              seg('Xoay cả khối cho cánh hoa viền hồng về mặt trước.', yy.mv, { h: 'F' }),
+              seg('Xoay mặt trước 2 lần.', ['F', 'F'], { n: 'Cánh hoa xuống đáy, đúng chỗ.' })
             ], [i]));
           }
         });
@@ -452,46 +459,46 @@ var Core = (function () {
     }
     var plans = pending.map(function (e) {
       var i = e.i, segs = [], t, id;
-      function freeU(st, slot, where) {
+      function freeU(st, slot) {
         var o = firstOpt(st, UOPT, function (q) { return !petalAt(q, slot); });
-        segs.push(seg('Dọn chỗ: xoay tầng trên đến khi ô ' + where + ' không phải màu trắng.', o.mv));
+        segs.push(seg('Dọn chỗ: xoay tầng trên.', o.mv, { n: 'Đến khi ô có vòng tròn không còn màu trắng.', m: [slot + ':U'] }));
         return o.s;
       }
       if (e.w[1] === -1) {
         var yy = firstOpt(s, YOPT, function (q) { return veq(q.p[i], [0, -1, 1]); });
-        segs.push(seg('Viên cạnh này có ô trắng quay xuống đáy. Xoay cả khối để nó nằm ở phía trước.', yy.mv));
-        t = freeU(yy.s, 'UF', 'phía trước của mặt trên');
-        segs.push(seg('Xoay mặt trước 2 lần. Ô trắng lật lên mặt trên.', ['F', 'F']));
+        segs.push(seg('Xoay cả khối cho viên viền hồng về mặt trước.', yy.mv, { n: 'Ô trắng của nó đang úp xuống đáy.', h: 'F' }));
+        t = freeU(yy.s, 'UF');
+        segs.push(seg('Xoay mặt trước 2 lần.', ['F', 'F'], { n: 'Ô trắng lật lên mặt trên.' }));
         id = 'c1-d';
       } else {
         var y2 = firstOpt(s, YOPT, function (q) { return mvec(q.m[i], [0, -1, 0])[2] === 1; });
-        segs.push(seg('Xoay cả khối để ô trắng quay về phía bạn.', y2.mv));
+        segs.push(seg('Xoay cả khối cho ô trắng viền hồng về mặt trước.', y2.mv, { h: 'F' }));
         t = y2.s;
         var p = t.p[i];
         if (p[0] === 1) {
-          t = freeU(t, 'UR', 'bên phải của mặt trên');
-          segs.push(seg('Ô trắng ở bên phải của mặt trước. Đẩy cột phải lên.', ['R']));
+          t = freeU(t, 'UR');
+          segs.push(seg('Đẩy cột phải lên.', ['R'], { n: 'Ô trắng lên mặt trên.' }));
           id = 'c1-fr';
         } else if (p[0] === -1) {
-          t = freeU(t, 'UL', 'bên trái của mặt trên');
-          segs.push(seg('Ô trắng ở bên trái của mặt trước. Đẩy cột trái lên.', ["L'"]));
+          t = freeU(t, 'UL');
+          segs.push(seg('Đẩy cột trái lên.', ["L'"], { n: 'Ô trắng lên mặt trên.' }));
           id = 'c1-fl';
         } else if (p[1] === 1) {
-          segs.push(seg('Ô trắng ở hàng trên của mặt trước. Xoay mặt trước theo chiều kim đồng hồ. Ô trắng chạy sang bên phải.', ['F']));
+          segs.push(seg('Xoay mặt trước ↻ 1 lần.', ['F'], { n: 'Ô trắng chạy sang cột phải.' }));
           t = run(t, ['F']);
-          t = freeU(t, 'UR', 'bên phải của mặt trên');
-          segs.push(seg('Đẩy cột phải lên.', ['R']));
+          t = freeU(t, 'UR');
+          segs.push(seg('Đẩy cột phải lên.', ['R'], { n: 'Ô trắng lên mặt trên.' }));
           id = 'c1-uf';
         } else {
-          t = freeU(t, 'UF', 'phía trước của mặt trên');
-          segs.push(seg('Ô trắng ở hàng dưới của mặt trước. Xoay mặt trước theo chiều kim đồng hồ. Ô trắng chạy sang bên trái.', ['F']));
+          t = freeU(t, 'UF');
+          segs.push(seg('Xoay mặt trước ↻ 1 lần.', ['F'], { n: 'Ô trắng chạy sang cột trái.' }));
           t = run(t, ['F']);
-          t = freeU(t, 'UL', 'bên trái của mặt trên');
-          segs.push(seg('Đẩy cột trái lên.', ["L'"]));
+          t = freeU(t, 'UL');
+          segs.push(seg('Đẩy cột trái lên.', ["L'"], { n: 'Ô trắng lên mặt trên.' }));
           id = 'c1-df';
         }
       }
-      return mk(1, id, 'Làm bông cúc: đưa viên cạnh trắng lên mặt trên', segs, [i]);
+      return mk(1, id, 'Làm bông cúc: đưa ô trắng lên mặt trên', segs, [i]);
     });
     return best(plans);
   }
@@ -508,9 +515,9 @@ var Core = (function () {
         var t = uu.s, n = 0;
         while (!ok(t, i) && n < 6) { apply(t, f1); n++; }
         return mk(2, 'c2-top', 'Đưa một viên góc trắng xuống tầng dưới', [
-          seg('Viên góc viền hồng có màu trắng và 2 màu khác. Xoay cả khối để 2 màu đó là ô giữa của mặt trước và mặt phải.', yy.mv),
-          seg('Xoay tầng trên để viên góc về góc trên bên phải của mặt trước.', uu.mv),
-          seg('Làm Thang máy ' + n + ' lần. Viên góc xuống tầng dưới, ô trắng quay xuống đáy.', rep(f1, n), 'f1', n)
+          seg('Xoay cả khối cho khớp 2 màu.', yy.mv, { n: 'Hai ô giữa có vòng tròn phải giống 2 màu của viên góc viền hồng (không tính màu trắng).', m: ['F:F', 'R:R'] }),
+          seg('Xoay tầng trên cho viên góc viền hồng vào góc có vòng tròn.', uu.mv, { m: ['UFR'] }),
+          seg('Làm Thang máy ' + n + ' lần.', rep(f1, n), 'f1', n, { n: 'Viên góc xuống tầng dưới, ô trắng quay xuống đáy.' })
         ], [i]);
       }));
     }
@@ -520,13 +527,13 @@ var Core = (function () {
         var t = clone(yy.s), n = 0;
         while (!ok(t, i) && n < 6) { apply(t, f1); n++; }
         return mk(2, 'c2-twist', 'Viên góc trắng đúng chỗ nhưng ô trắng chưa quay xuống', [
-          seg('Xoay cả khối để viên góc đó về góc dưới bên phải của mặt trước.', yy.mv),
-          seg('Làm Thang máy ' + n + ' lần. Ô trắng sẽ quay xuống đáy.', rep(f1, n), 'f1', n)
+          seg('Xoay cả khối cho viên góc viền hồng vào góc có vòng tròn.', yy.mv, { m: ['DFR'] }),
+          seg('Làm Thang máy ' + n + ' lần.', rep(f1, n), 'f1', n, { n: 'Ô trắng sẽ quay xuống đáy.' })
         ], [i]);
       }
       return mk(2, 'c2-wrong', 'Viên góc trắng nằm sai chỗ ở tầng dưới', [
-        seg('Xoay cả khối để viên góc đó về góc dưới bên phải của mặt trước.', yy.mv),
-        seg('Làm Thang máy 1 lần. Viên góc sẽ lên tầng trên.', f1, 'f1', 1)
+        seg('Xoay cả khối cho viên góc viền hồng vào góc có vòng tròn.', yy.mv, { m: ['DFR'] }),
+        seg('Làm Thang máy 1 lần.', f1, 'f1', 1, { n: 'Viên góc sẽ lên tầng trên.' })
       ], [i]);
     }));
   }
@@ -544,19 +551,19 @@ var Core = (function () {
         var yy = firstOpt(uu.s, YOPT, function (q) { return veq(q.p[i], [0, 1, 1]); });
         var right = mvec(yy.s.g, topHome(yy.s))[0] === 1;
         return mk(3, right ? 'c3-right' : 'c3-left', 'Đưa một viên cạnh vào tầng giữa', [
-          seg('Tìm viên cạnh không có màu vàng ở tầng trên. Xoay tầng trên đến khi màu ở mặt bên của nó giống ô giữa ngay dưới.', uu.mv),
-          seg('Xoay cả khối để viên cạnh đó quay về phía bạn.', yy.mv),
+          seg('Xoay tầng trên cho viên viền hồng khớp màu.', uu.mv, { n: 'Khớp màu: màu bên của nó giống ô giữa ngay dưới, thành một vạch dọc.' }),
+          seg('Xoay cả khối cho viên viền hồng về mặt trước.', yy.mv, { h: 'F' }),
           right
-            ? seg('Màu ở mặt trên của viên cạnh giống ô giữa bên phải. Làm Gửi sang phải.', FORMULAS.f3r.moves, 'f3r', 1)
-            : seg('Màu ở mặt trên của viên cạnh giống ô giữa bên trái. Làm Gửi sang trái.', FORMULAS.f3l.moves, 'f3l', 1)
+            ? seg('Làm Gửi sang phải.', FORMULAS.f3r.moves, 'f3r', 1, { n: 'Vì màu trên của viên cạnh giống ô giữa mặt phải.' })
+            : seg('Làm Gửi sang trái.', FORMULAS.f3l.moves, 'f3l', 1, { n: 'Vì màu trên của viên cạnh giống ô giữa mặt trái.' })
         ], [i]);
       }));
     }
     return best(un.map(function (i) {
       var yy = firstOpt(s, YOPT, function (q) { return veq(q.p[i], [1, 0, 1]); });
       return mk(3, 'c3-stuck', 'Viên cạnh nằm sai chỗ ở tầng giữa', [
-        seg('Xoay cả khối để viên cạnh đó ở bên phải của mặt trước.', yy.mv),
-        seg('Làm Gửi sang phải 1 lần. Viên cạnh sẽ lên tầng trên.', FORMULAS.f3r.moves, 'f3r', 1)
+        seg('Xoay cả khối cho viên viền hồng vào chỗ có vòng tròn.', yy.mv, { m: ['FR'] }),
+        seg('Làm Gửi sang phải 1 lần.', FORMULAS.f3r.moves, 'f3r', 1, { n: 'Viên cạnh sẽ lên tầng trên.' })
       ], [i]);
     }));
   }
@@ -570,10 +577,10 @@ var Core = (function () {
     if (n === 2) {
       if ((up(s, 'F') && up(s, 'B')) || (up(s, 'L') && up(s, 'R'))) {
         var o = firstOpt(s, UOPT, function (q) { return up(q, 'L') && up(q, 'R'); });
-        return mk(4, 'c4-line', 'Mặt trên có một vạch vàng', [seg('Xoay tầng trên để vạch vàng nằm ngang.', o.mv), fs]);
+        return mk(4, 'c4-line', 'Mặt trên có một vạch vàng', [seg('Xoay tầng trên cho vạch vàng nằm ngang.', o.mv, { n: 'Hai ô vàng vào 2 ô có vòng tròn.', m: ['UL:U', 'UR:U'] }), fs]);
       }
       var o2 = firstOpt(s, UOPT, function (q) { return up(q, 'B') && up(q, 'L'); });
-      return mk(4, 'c4-L', 'Mặt trên có chữ L màu vàng', [seg('Xoay tầng trên để chữ L nằm ở góc xa bên trái. Hai đầu chữ L chỉ ra phía sau và sang trái.', o2.mv), fs]);
+      return mk(4, 'c4-L', 'Mặt trên có chữ L màu vàng', [seg('Xoay tầng trên cho 2 ô vàng vào 2 ô có vòng tròn.', o2.mv, { n: 'Chữ L nằm ở góc xa bên trái.', m: ['UB:U', 'UL:U'] }), fs]);
     }
     return null;
   }
@@ -582,24 +589,26 @@ var Core = (function () {
   function matches(q) { return SIDES.filter(function (X) { return colorAt(q, P('U' + X), V[X]) === centerColor(q, V[X]); }); }
   function planYEdges(s) {
     var four = firstOpt(s, UOPT, function (q) { return matches(q).length === 4; });
-    if (four) return mk(5, 'c5-turn', 'Chỉ cần xoay tầng trên', [seg('Xoay tầng trên đến khi cả 4 viên cạnh vàng giống màu ô giữa ngay dưới.', four.mv)]);
+    if (four) return mk(5, 'c5-turn', 'Chỉ cần xoay tầng trên', [seg('Xoay tầng trên cho khớp màu.', four.mv, { n: 'Cả 4 viên cạnh vàng giống màu ô giữa ngay dưới.' })]);
     var f = FORMULAS.f5.moves;
     function adjacent(m) { return !((m[0] === 'F' && m[1] === 'B') || (m[0] === 'R' && m[1] === 'L')); }
+    function pair(q) { return matches(q).map(function (X) { return q.at[key(P('U' + X))]; }); }
+    var KHOP = 'Khớp màu: màu bên của nó giống ô giữa ngay dưới.';
     var adj = firstOpt(s, UOPT, function (q) { var m = matches(q); return m.length === 2 && adjacent(m); });
     if (adj) {
       var yy = firstOpt(adj.s, YOPT, function (q) { var m = matches(q); return m.indexOf('B') >= 0 && m.indexOf('R') >= 0; });
       return mk(5, 'c5-adj', 'Hai viên cạnh đúng màu nằm cạnh nhau', [
-        seg('Xoay tầng trên đến khi có đúng 2 viên cạnh vàng giống màu ô giữa ngay dưới.', adj.mv),
-        seg('Xoay cả khối để 2 viên đó ở phía sau và bên phải.', yy.mv),
+        seg('Xoay tầng trên cho 2 viên viền hồng khớp màu.', adj.mv, { n: KHOP }),
+        seg('Xoay cả khối cho 2 viên viền hồng vào 2 chỗ có vòng tròn.', yy.mv, { n: 'Một viên ở mặt sau, một viên ở mặt phải.', m: ['UB', 'UR'] }),
         seg('Làm công thức Đổi cạnh.', f, 'f5', 1)
-      ]);
+      ], pair(adj.s));
     }
     var opp = firstOpt(s, UOPT, function (q) { return matches(q).length === 2; });
     if (!opp) return null;
     return mk(5, 'c5-opp', 'Hai viên cạnh đúng màu nằm đối diện nhau', [
-      seg('Xoay tầng trên đến khi có đúng 2 viên cạnh vàng giống màu ô giữa ngay dưới.', opp.mv),
-      seg('Làm Đổi cạnh 1 lần. Sau đó 2 viên đúng màu sẽ nằm cạnh nhau.', f, 'f5', 1)
-    ]);
+      seg('Xoay tầng trên cho 2 viên viền hồng khớp màu.', opp.mv, { n: KHOP }),
+      seg('Làm Đổi cạnh 1 lần.', f, 'f5', 1, { n: 'Sau đó 2 viên khớp màu sẽ nằm cạnh nhau.' })
+    ], pair(opp.s));
   }
 
   // ---------- chặng 6: góc vàng về đúng ô ----------
@@ -610,11 +619,11 @@ var Core = (function () {
       var i = good[0];
       var yy = firstOpt(s, YOPT, function (q) { return veq(q.p[i], [1, 1, 1]); });
       return mk(6, 'c6-one', 'Có một viên góc vàng đúng chỗ', [
-        seg('Viên góc viền hồng đã đúng chỗ: 3 màu của nó giống 3 ô giữa quanh nó. Xoay cả khối để nó về góc trên bên phải của mặt trước.', yy.mv),
-        seg('Làm công thức Đổi góc. Ba viên góc kia đổi chỗ cho nhau.', f, 'f6', 1)
+        seg('Xoay cả khối cho viên góc viền hồng vào góc có vòng tròn.', yy.mv, { n: 'Viên này đã đúng chỗ: 3 màu của nó giống 3 ô giữa quanh nó.', m: ['UFR'] }),
+        seg('Làm công thức Đổi góc.', f, 'f6', 1, { n: 'Ba viên góc kia đổi chỗ cho nhau.' })
       ], [i]);
     }
-    return mk(6, 'c6-none', 'Chưa có viên góc vàng nào đúng chỗ', [seg('Làm Đổi góc 1 lần. Sau đó sẽ có 1 viên góc đúng chỗ.', f, 'f6', 1)]);
+    return mk(6, 'c6-none', 'Chưa có viên góc vàng nào đúng chỗ', [seg('Làm Đổi góc 1 lần.', f, 'f6', 1, { n: 'Sau đó sẽ có 1 viên góc đúng chỗ.' })]);
   }
 
   // ---------- chặng 7: xoay góc vàng ----------
@@ -641,25 +650,25 @@ var Core = (function () {
     var f = FORMULAS.f7.moves, segs = [], t = clone(s), title = 'Xoay viên góc để ô vàng quay lên trên';
     if (det.p > 0) {
       var restMoves = f.slice(det.p);
-      segs.push(seg('Làm nốt công thức Thang máy ngược đang làm dở.', restMoves, 'f7', 0));
+      segs.push(seg('Làm nốt Thang máy ngược đang dở.', restMoves, 'f7', 0));
       apply(t, restMoves);
     }
     if (!ufrUp(t)) {
       var n = 0;
       while (!ufrUp(t) && n < 6) { apply(t, f); n++; }
-      segs.push(seg('Làm Thang máy ngược ' + n + ' lần. Ô vàng ở góc trên bên phải của mặt trước sẽ quay lên trên. Hai tầng dưới lộn xộn là bình thường.', rep(f, n), 'f7', n));
+      segs.push(seg('Làm Thang máy ngược ' + n + ' lần.', rep(f, n), 'f7', n, { n: 'Ô vàng của viên góc viền hồng sẽ quay lên trên. Hai tầng dưới lộn xộn là bình thường.' }));
       return mk(7, 'c7-twist', title, segs, [s.at[key([1, 1, 1])]]);
     }
     if (segs.length) return mk(7, 'c7-twist', title, segs);
     if (allUp(t)) {
       var a = firstOpt(t, UOPT, solved);
       if (!a) return null;
-      return mk(7, 'c7-align', 'Bước cuối cùng', [seg('Xoay tầng trên cho khớp màu. Xong!', a.mv)]);
+      return mk(7, 'c7-align', 'Bước cuối cùng', [seg('Xoay tầng trên cho khớp màu.', a.mv, { n: 'Thế là xong cả khối!' })]);
     }
     var o = firstOpt(t, [['U'], ["U'"], ['U', 'U']], function (q) { return !ufrUp(q); });
     return mk(7, 'c7-next', 'Viên góc này xong rồi, sang viên tiếp theo', [
-      seg('Chỉ xoay tầng trên. Đưa một viên góc có ô vàng chưa quay lên về góc trên bên phải của mặt trước. Không xoay cả khối.', o.mv)
-    ]);
+      seg('Xoay tầng trên cho viên góc viền hồng vào góc có vòng tròn.', o.mv, { n: 'Ô vàng của viên này chưa quay lên. Không xoay cả khối.', m: ['UFR'] })
+    ], [o.s.at[key([1, 1, 1])]]);
   }
 
   // ---------- đếm tiến độ trong từng chặng ----------
@@ -740,7 +749,7 @@ var Core = (function () {
   }
 
   return {
-    HOMES: HOMES, MOVES: MOVES, FORMULAS: FORMULAS, G: G, V: V,
+    HOMES: HOMES, MOVES: MOVES, FORMULAS: FORMULAS, G: G, V: V, pos: P,
     newCube: newCube, clone: clone, move: move, apply: apply, run: run, inv: inv, parse: parse, rotMat: rotMat,
     mmul: mmul, mvec: mvec, mTvec: mTvec, dirColor: dirColor, colorAt: colorAt, centerColor: centerColor, key: key,
     stageIndex: stageIndex, solved: solved, plan: plan, planMoves: planMoves, counts: counts,
@@ -770,17 +779,17 @@ var Core = (function () {
   var STAGES = [null,
     { name: 'Chữ thập trắng', goal: 'Mặt đáy có một chữ thập màu trắng. Ở 4 mặt bên, màu của mỗi viên cạnh trắng giống ô giữa ngay trên nó.',
       steps: ['Tìm một viên cạnh có ô trắng chưa nằm ở mặt trên.',
-        'Xoay cả khối cho ô trắng quay về phía bạn.',
-        'Đẩy nó lên mặt trên, cạnh ô giữa vàng. Bấm xem máy làm mẫu ở dưới.',
+        'Xoay cả khối cho ô trắng về mặt trước.',
+        'Đẩy ô trắng lên mặt trên, cạnh ô giữa vàng.',
         'Làm đủ 4 ô trắng quanh ô giữa vàng: đó là bông cúc.',
-        'Thả cánh hoa: xoay tầng trên cho màu bên của cánh hoa giống ô giữa ngay dưới, rồi xoay mặt đó 2 lần.',
+        'Thả cánh hoa: xoay tầng trên cho cánh hoa khớp màu ô giữa ngay dưới. Rồi xoay mặt đó 2 lần.',
         'Thả đủ 4 cánh hoa là xong.'],
       ifs: [],
       cases: [['c1-fr', 'Ô trắng bên phải'], ['c1-fl', 'Ô trắng bên trái'], ['c1-uf', 'Ô trắng ở trên'], ['c1-df', 'Ô trắng ở dưới'], ['c1-d', 'Ô trắng quay xuống đáy'], ['c1-drop', 'Thả cánh hoa']], f: [] },
     { name: 'Góc trắng', goal: 'Cả mặt đáy màu trắng. Ở 4 mặt bên, hàng dưới cùng giống màu ô giữa.',
       steps: ['Tìm viên góc có ô trắng ở tầng trên.',
-        'Xoay cả khối cho 2 màu còn lại của nó là ô giữa mặt trước và mặt phải.',
-        'Xoay tầng trên đưa viên góc về góc trên bên phải của mặt trước.',
+        'Xoay cả khối cho 2 màu kia của viên góc giống ô giữa mặt trước và mặt phải.',
+        'Xoay tầng trên cho viên góc về góc trên bên phải mặt trước (góc có vòng tròn).',
         'Làm Thang máy 1, 3 hoặc 5 lần, đến khi ô trắng quay xuống đáy.',
         'Làm đủ 4 viên góc.'],
       ifs: ['Góc trắng kẹt sai chỗ ở tầng dưới? Đưa về góc dưới bên phải mặt trước, làm Thang máy 1 lần.',
@@ -788,8 +797,8 @@ var Core = (function () {
       cases: [['c2-top', 'Góc trắng ở tầng trên'], ['c2-wrong', 'Góc trắng nằm sai chỗ'], ['c2-twist', 'Góc trắng bị xoay lệch']], f: ['f1'] },
     { name: 'Tầng giữa', goal: 'Ở 4 mặt bên, hai hàng dưới giống màu ô giữa.',
       steps: ['Tìm viên cạnh không có màu vàng ở tầng trên.',
-        'Xoay tầng trên cho màu bên của nó giống ô giữa ngay dưới: thành vạch dọc cùng màu.',
-        'Xoay cả khối cho vạch dọc quay về phía bạn.',
+        'Xoay tầng trên cho màu bên của nó giống ô giữa ngay dưới: thành vạch dọc.',
+        'Xoay cả khối cho vạch dọc về mặt trước.',
         'Màu trên của viên cạnh giống ô giữa bên phải: Gửi sang phải. Giống bên trái: Gửi sang trái.',
         'Làm đủ 4 viên cạnh.'],
       ifs: ['Viên cạnh kẹt sai chỗ ở tầng giữa? Đưa về bên phải mặt trước, làm Gửi sang phải 1 lần.'],
@@ -797,14 +806,14 @@ var Core = (function () {
     { name: 'Chữ thập vàng', goal: 'Mặt trên có một chữ thập màu vàng. Màu ở 4 mặt bên chưa cần đúng.',
       steps: ['Nhìn mặt trên, chỉ nhìn ô giữa và 4 ô cạnh.',
         'Hình màu vàng là gì: chấm, chữ L hay vạch?',
-        'Chữ L: xoay tầng trên cho L nằm ở góc xa bên trái. Vạch: xoay cho vạch nằm ngang. Chấm: không xoay.',
+        'Chữ L: xoay tầng trên cho L nằm ở góc xa bên trái (2 ô có vòng tròn). Vạch: xoay cho vạch nằm ngang. Chấm: không xoay.',
         'Làm công thức Chữ thập vàng.',
         'Chưa thành chữ thập thì làm lại từ bước 2.'],
       ifs: [],
       cases: [['c4-dot', 'Một chấm'], ['c4-L', 'Chữ L'], ['c4-line', 'Vạch thẳng']], f: ['f4'] },
     { name: 'Cạnh vàng đúng chỗ', goal: 'Ở 4 mặt bên, màu của 4 viên cạnh vàng giống ô giữa ngay dưới.',
       steps: ['Xoay tầng trên đến khi có đúng 2 viên cạnh vàng khớp màu ô giữa ngay dưới.',
-        'Xoay cả khối cho 2 viên đó ở phía sau và bên phải.',
+        'Xoay cả khối cho 2 viên đó về mặt sau và mặt phải (2 chỗ có vòng tròn).',
         'Làm công thức Đổi cạnh.',
         'Xoay tầng trên cho cả 4 viên khớp màu.'],
       ifs: ['Cả 4 viên đã khớp? Xong luôn.',
@@ -812,7 +821,7 @@ var Core = (function () {
       cases: [['c5-adj', 'Hai viên cạnh nhau'], ['c5-opp', 'Hai viên đối diện']], f: ['f5'] },
     { name: 'Góc vàng đúng chỗ', goal: 'Cả 4 viên góc vàng nằm đúng chỗ. Ô vàng của chúng chưa cần quay lên trên.',
       steps: ['Tìm viên góc đúng chỗ: 3 màu của nó giống 3 ô giữa quanh nó (ô vàng chưa cần quay lên).',
-        'Xoay cả khối cho nó về góc trên bên phải của mặt trước.',
+        'Xoay cả khối cho nó về góc trên bên phải mặt trước (góc có vòng tròn).',
         'Làm công thức Đổi góc.',
         'Chưa đủ 4 viên đúng chỗ thì làm Đổi góc thêm 1 lần.'],
       ifs: ['Không viên nào đúng chỗ? Làm Đổi góc 1 lần, rồi làm lại từ bước 1.',
@@ -840,8 +849,8 @@ var Core = (function () {
     'c5-turn': 'Xong khi: cả 4 viên cạnh vàng giống màu ô giữa.', 'c5-adj': 'Xong khi: xoay tầng trên thì cả 4 viên cạnh vàng khớp màu.',
     'c5-opp': 'Xong khi: có 2 viên đúng màu nằm cạnh nhau.',
     'c6-one': 'Xong khi: cả 4 viên góc đúng chỗ. Chưa được thì làm thêm 1 lần.', 'c6-none': 'Xong khi: có 1 viên góc đúng chỗ.',
-    'c7-twist': 'Xong khi: ô vàng ở góc trên bên phải của mặt trước quay lên trên.',
-    'c7-next': 'Xong khi: một viên góc chưa xong nằm ở góc trên bên phải của mặt trước.', 'c7-align': 'Xong khi: cả 6 mặt đúng màu.'
+    'c7-twist': 'Xong khi: ô vàng của viên góc viền hồng quay lên trên.',
+    'c7-next': 'Xong khi: viên góc viền hồng nằm ở góc có vòng tròn.', 'c7-align': 'Xong khi: cả 6 mặt đúng màu.'
   };
   // ---- quy tắc vàng: nhắc con cách học, không phải luật chơi ----
   var RULES = [
@@ -870,6 +879,7 @@ var Core = (function () {
   var INTRO = [
     ['Ô giữa đứng yên', 'Ô chính giữa mỗi mặt gọi là ô giữa. Nó không bao giờ đổi chỗ. Ô giữa màu gì, cả mặt phải về màu ấy. Luôn cầm khối: vàng ở trên, trắng ở dưới.', 'c'],
     ['Viên cạnh và viên góc', 'Viên cạnh có 2 màu, viên góc có 3 màu (đang viền hồng). Giải rubik là đưa từng viên về đúng chỗ.', 'p'],
+    ['Mặt trước ở đâu?', 'Mặt trước là mặt quay về phía bạn. Trên khối luôn có nhãn: Mặt trước, Mặt phải, Mặt trên. Xoay cả khối thì mặt khác sẽ thành mặt trước. Bấm thử nút Cả khối nhé!', 'f'],
     ['Cách xoay', 'Vuốt ngón tay trên khối, hoặc bấm nút bên dưới. Chỉ xoay lớp ngoài, lớp giữa đứng yên. Bấm thử nhé!', ''],
     ['Nhìn mặt sau', 'Bấm Nhìn quanh, rồi kéo trên khối để xem mọi phía. Bấm Xong để về hướng chính.', 'v'],
     ['Mỗi chặng 4 bước', 'Xem máy làm mẫu → Làm theo mũi tên hồng → Tự làm → Làm lại trên khối thật. Sai không sao, cứ thử lại!', ''],
@@ -1107,7 +1117,7 @@ var Core = (function () {
     var W = 300, H = 300, dpr = 1, cube = Core.newCube();
     var base = { yaw: -0.56, pitch: 0.46 }, dyaw = 0, dpitch = 0, spring = null, spin = null, poseY = 0, poseP = 0, poseAnim = null;
     var anim = null, hits = [], drag = null, flashIds = [], flashUntil = 0;
-    var api = { arrow: null, focus: [], mask: null, interactive: true, onMove: null, active: false };
+    var api = { arrow: null, focus: [], marks: [], hot: '', labels: true, mask: null, interactive: true, onMove: null, active: false };
     var COL = { Y: '#ffd21a', W: '#f6f6f1', G: '#16a34a', B: '#2563eb', O: '#ff7a1a', R: '#dc2626' };
     var DIRS = [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]];
     var D = 11, ct, st, cp, sp, scale, cx, cy, eye;
@@ -1127,7 +1137,7 @@ var Core = (function () {
     function setup() {
       var th = base.yaw + poseY + dyaw, ph = Math.max(-1.45, Math.min(1.45, base.pitch + poseP + dpitch));
       ct = Math.cos(th); st = Math.sin(th); cp = Math.cos(ph); sp = Math.sin(ph);
-      scale = Math.min(W, H) / 5.7; cx = W / 2; cy = H / 2;
+      scale = Math.min(W, H - 34) / 5.8; cx = W / 2; cy = (H - 34) / 2 + 8; // chừa chỗ phía dưới cho nhãn tên mặt và nút Nhìn quanh
       eye = [-D * cp * st, D * sp, D * cp * ct];
     }
     function proj(v) {
@@ -1184,7 +1194,70 @@ var Core = (function () {
         poly(sq); ctx.lineWidth = scale * 0.13; ctx.strokeStyle = 'rgba(10,11,14,.9)'; ctx.stroke();
         ctx.lineWidth = scale * 0.07; ctx.strokeStyle = 'rgba(255,45,149,' + pulse.toFixed(2) + ')'; ctx.stroke();
       });
+      if (api.marks.length && !anim) drawMarks(pulse);
+      if (api.labels && !spin) drawLabels();
       if (api.arrow && !anim && eye[2] > 1.6) drawArrow(api.arrow, pulse);
+    }
+    // ---- nhãn tên mặt: bám theo mép ngoài của từng mặt đang nhìn thấy ----
+    var FACES = [['U', [0, 1, 0], 'Mặt trên'], ['D', [0, -1, 0], 'Mặt dưới'], ['F', [0, 0, 1], 'Mặt trước'], ['B', [0, 0, -1], 'Mặt sau'], ['R', [1, 0, 0], 'Mặt phải'], ['L', [-1, 0, 0], 'Mặt trái']];
+    function faceSeen(n) { return n[0] * eye[0] + n[1] * eye[1] + n[2] * eye[2] > 1.5; }
+    function rrect(x, y, w, h, r) {
+      ctx.beginPath(); ctx.moveTo(x + r, y); ctx.lineTo(x + w - r, y); ctx.arcTo(x + w, y, x + w, y + r, r); ctx.lineTo(x + w, y + h - r); ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
+      ctx.lineTo(x + r, y + h); ctx.arcTo(x, y + h, x, y + h - r, r); ctx.lineTo(x, y + r); ctx.arcTo(x, y, x + r, y, r); ctx.closePath();
+    }
+    function drawLabels() {
+      var fs = Math.max(11, Math.min(15, scale * 0.19)), ph = fs + 7;
+      ctx.font = '600 ' + fs + 'px "Be Vietnam Pro", system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      FACES.forEach(function (F) {
+        var n = F[1]; if (!faceSeen(n)) return;
+        var ax = n[0] ? 0 : n[1] ? 1 : 2, c = proj([n[0] * 1.5, n[1] * 1.5, n[2] * 1.5]), best = null;
+        [(ax + 1) % 3, (ax + 2) % 3].forEach(function (ta, k) {
+          [1, -1].forEach(function (sg) {
+            var t = [0, 0, 0]; t[ta] = sg; if (faceSeen(t)) return; // mép này giáp một mặt khác đang thấy: không phải mép ngoài
+            var e = [0, 0, 0]; e[k ? (ax + 1) % 3 : (ax + 2) % 3] = 1.5;
+            var m3 = [n[0] * 1.5 + t[0] * 1.5, n[1] * 1.5 + t[1] * 1.5, n[2] * 1.5 + t[2] * 1.5];
+            var a = proj([m3[0] - e[0], m3[1] - e[1], m3[2] - e[2]]), b = proj([m3[0] + e[0], m3[1] + e[1], m3[2] + e[2]]), m = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+            // giữa mép này đang có vòng tròn: dời nhãn về phía đầu mép gần giữa màn hình hơn
+            if (!anim && api.marks.some(function (nm) { if (nm.indexOf(':') >= 0) return false; var q = Core.pos(nm); return q[0] * 1.5 === m3[0] && q[1] * 1.5 === m3[1] && q[2] * 1.5 === m3[2]; })) {
+              var to = Math.abs(a[0] - cx) < Math.abs(b[0] - cx) ? a : b; m = [m[0] + (to[0] - m[0]) * 0.75, m[1] + (to[1] - m[1]) * 0.75];
+            }
+            var ex = b[0] - a[0], ey = b[1] - a[1], L = Math.hypot(ex, ey) || 1; ex /= L; ey /= L;
+            var nx = -ey, ny = ex; if (nx * (m[0] - c[0]) + ny * (m[1] - c[1]) < 0) { nx = -nx; ny = -ny; }
+            if (!best || Math.abs(ny) > best.s) best = { s: Math.abs(ny), m: m, nx: nx, ny: ny, ang: Math.atan2(ey, ex) };
+          });
+        });
+        if (!best) return;
+        var ang = best.ang; if (ang > Math.PI / 2) ang -= Math.PI; else if (ang < -Math.PI / 2) ang += Math.PI;
+        // chữ chỉ nghiêng nhẹ cho dễ đọc; mép dốc hơn thì đẩy nhãn ra xa thêm để không đè lên khối
+        var tilt = Math.max(-0.3, Math.min(0.3, ang)), dl = ang - tilt;
+        var hot = api.hot === F[0], w = ctx.measureText(F[2]).width + fs * 1.1, off = Math.abs(Math.sin(dl)) * w / 2 + Math.abs(Math.cos(dl)) * ph / 2 + 5;
+        ctx.save(); ctx.translate(best.m[0] + best.nx * off, best.m[1] + best.ny * off); ctx.rotate(tilt);
+        rrect(-w / 2, -ph / 2, w, ph, ph / 2);
+        ctx.fillStyle = hot ? '#ff2d95' : 'rgba(18,20,26,.86)'; ctx.fill();
+        ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(255,255,255,.45)'; ctx.stroke();
+        ctx.fillStyle = '#fff'; ctx.fillText(F[2], 0, 0.5);
+        ctx.restore();
+      });
+    }
+    // ---- vòng tròn: "chỗ cần đưa viên tới" hoặc "ô cần nhìn" ----
+    function drawMarks(pulse) {
+      api.marks.forEach(function (name) {
+        var part = name.split(':'), p = Core.pos(part[0]), pts = [], g, an;
+        if (part[1]) {
+          var d = Core.V[part[1]]; if (!faceSeen(d)) return;
+          var a2 = d[0] ? 0 : d[1] ? 1 : 2, u = [0, 0, 0], v = [0, 0, 0]; u[(a2 + 1) % 3] = 1; v[(a2 + 2) % 3] = 1;
+          var c = [p[0] + d[0] * 0.51, p[1] + d[1] * 0.51, p[2] + d[2] * 0.51];
+          for (g = 0; g < 32; g++) { an = g * Math.PI / 16; pts.push(proj([c[0] + (u[0] * Math.cos(an) + v[0] * Math.sin(an)) * 0.3, c[1] + (u[1] * Math.cos(an) + v[1] * Math.sin(an)) * 0.3, c[2] + (u[2] * Math.cos(an) + v[2] * Math.sin(an)) * 0.3])); }
+        } else {
+          if (!DIRS.some(function (n) { return n[0] * p[0] + n[1] * p[1] + n[2] * p[2] === 1 && faceSeen(n); })) return;
+          var o = proj([p[0] * 1.5, p[1] * 1.5, p[2] * 1.5]), r = scale * 0.4;
+          for (g = 0; g < 32; g++) { an = g * Math.PI / 16; pts.push([o[0] + Math.cos(an) * r, o[1] + Math.sin(an) * r]); }
+        }
+        var w = Math.max(3, scale * 0.07);
+        poly(pts); ctx.lineJoin = 'round';
+        ctx.lineWidth = w + 5; ctx.strokeStyle = 'rgba(10,11,14,.92)'; ctx.stroke();
+        ctx.lineWidth = w; ctx.strokeStyle = 'rgba(255,255,255,' + (0.7 + 0.3 * pulse).toFixed(2) + ')'; ctx.stroke();
+      });
     }
     function arrowLines(mv) {
       var z = 1.53, a = 1.12, m = mv.charAt(0), pr = mv.length > 1;
@@ -1491,6 +1564,7 @@ var Core = (function () {
     var ol = el('ol', 'segs'), e = S.q[S.qi], cur = e ? e.gi : S.plan.segs.length;
     S.plan.segs.forEach(function (g, gi) {
       var li = el('li', gi < cur ? 'done' : gi === cur ? 'cur' : '', g.t);
+      if (gi === cur && g.n) li.appendChild(el('span', 'why', g.n));
       if (gi === cur && showChips) li.appendChild(chips(g, e.mi));
       ol.appendChild(li);
     });
@@ -1596,6 +1670,13 @@ var Core = (function () {
       else if (S.hint === 0) toast('Vẫn bí? Bấm Gợi ý để xem từng bước nhé 🙂', 4200);
     }, 30000);
   }
+  // mặt mà bước này nói tới: nhãn của mặt đó đổi sang màu hồng
+  function hotFace(g) {
+    if (g.hot) return g.hot;
+    if (g.f || !g.moves.length) return '';
+    var c = g.moves[0].charAt(0);
+    return c !== 'y' && g.moves.every(function (m) { return m.charAt(0) === c; }) ? c : '';
+  }
   function render() {
     // tiêu đề, thẻ
     var names = { exam: 'Thi tốt nghiệp', review: 'Ôn tập', free: 'Luyện tự do' };
@@ -1613,7 +1694,9 @@ var Core = (function () {
     if (showPlan) { focus = S.plan.focus; if (e && (S.mode === 'learn' || S.hint === 2 || S.reveal)) arrow = e.mv; }
     if (S.mode === 'intro' && INTRO[S.introPage][2] === 'p') focus = [Core.key([0, 1, 1]), Core.key([1, 1, 1])].map(function (k) { return S.cube.at[k]; });
     if (S.mode === 'intro' && INTRO[S.introPage][2] === 'c') focus = Core.G.centers.map(function (i) { return i; });
-    R.arrow = arrow; R.focus = focus;
+    var showSteps = S.plan && !S.done && e && ((S.mode === 'learn' && S.demo) || S.mode === 'guided' || (S.mode === 'solve' && S.hint > 0 && !S.stray));
+    var cg = showSteps ? S.plan.segs[e.gi] : null;
+    R.arrow = arrow; R.focus = focus; R.marks = cg ? cg.marks : []; R.hot = cg ? hotFace(cg) : (S.mode === 'intro' && INTRO[S.introPage][2] === 'f' ? 'F' : ''); R.labels = !S.done;
     // bàn phím xoay
     var pad = $('#pad'); pad.hidden = S.mode === 'learn' || S.mode === 'real' || !!S.done;
     Array.prototype.forEach.call(pad.children, function (b) { b.classList.toggle('exp', arrow === b.dataset.mv); b.disabled = !!R.look; });
@@ -1662,7 +1745,7 @@ var Core = (function () {
     return (STORY[key] = found);
   }
   function buildScene(k, sp) {
-    var out = { mask: maskFor(k), focus: [], pose: [0, 0], moves: [] }, ctx = { last7: k === 7 }, s, pl, i, mv, n = 0;
+    var out = { mask: maskFor(k), focus: [], marks: [], hot: '', pose: [0, 0], moves: [] }, ctx = { last7: k === 7 }, s, pl, i, mv, n = 0;
     if (sp.legend) { out.cube = Core.newCube(); out.mask = null; out.moves = [sp.legend, Core.inv(sp.legend)]; return out; }
     if (sp.solved) {
       out.cube = Core.newCube(); out.mask = null;
@@ -1684,6 +1767,7 @@ var Core = (function () {
     for (i = 0; i < show && i < pl.segs.length; i++) Core.apply(s, pl.segs[i].moves);
     out.cube = Core.clone(s);
     out.focus = sp.focus === 'wEdges' ? Core.G.wEdges : sp.focus === 'ycross' ? Core.G.yEdges.concat([s.at[Core.key([0, 1, 0])]]) : pl.focus;
+    if (sp.play === 1 && !sp.until && pl.segs[show]) { out.marks = pl.segs[show].marks; out.hot = hotFace(pl.segs[show]); }
     if (sp.until) {
       var t = Core.clone(s), p2 = pl, c2 = { last7: ctx.last7 }; n = 0;
       while (p2 && p2.stage === k && p2.id !== sp.until && n++ < 30) { mv = Core.planMoves(p2); out.moves = out.moves.concat(mv); Core.apply(t, mv); c2.last7 = p2.stage === 7; p2 = Core.plan(t, c2); }
@@ -1699,7 +1783,7 @@ var Core = (function () {
     var sc = buildScene(S.stage, sp);
     if (!sc) { toast('Chưa tạo được hình, bấm lại nhé'); return; }
     S.scene = { moves: sc.moves, i: 0 };
-    setCube(sc.cube); R.mask = sc.mask; R.focus = sc.focus; R.interactive = false; R.pose(sc.pose[0], sc.pose[1]);
+    setCube(sc.cube); R.mask = sc.mask; R.focus = sc.focus; R.marks = sc.marks; R.hot = sc.hot; R.interactive = false; R.pose(sc.pose[0], sc.pose[1]);
     Array.prototype.forEach.call(document.querySelectorAll('#coach .ill.on'), function (n) { n.classList.remove('on'); });
     if (node) node.classList.add('on');
     R.arrow = sc.moves[0] || null;
@@ -1727,7 +1811,7 @@ var Core = (function () {
     S.lstep = i; render();
     var sp = i >= 0 ? SCN[S.stage].steps[i] : null;
     if (sp) playScene(sp, $('#coach .bigstep'));
-    else { stopScene(); setCube(Core.clone(goalCube(S.stage))); R.mask = maskFor(S.stage); R.focus = []; R.arrow = null; R.pose(0, S.stage <= 2 ? -0.98 : 0); }
+    else { stopScene(); setCube(Core.clone(goalCube(S.stage))); R.mask = maskFor(S.stage); R.focus = []; R.marks = []; R.hot = ''; R.arrow = null; R.pose(0, S.stage <= 2 ? -0.98 : 0); }
   }
   function stepDots(i, n) { var w = el('div', 'sdots'); for (var j = 0; j < n; j++) w.appendChild(el('span', j < i ? 'ok' : j === i ? 'cur' : '')); return w; }
   function casesRow() {

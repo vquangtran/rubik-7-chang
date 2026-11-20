@@ -23,6 +23,9 @@ Mục tiêu: giúp trẻ vượt qua nỗi sợ "khó", chịu khó thực hành
 - **7 chặng × 4 bước**: Xem → Làm theo → Tự làm → Khối thật. Thi tốt nghiệp sau chặng 7, ôn lại sau 1, 3, 7 ngày.
 - **Màn Xem từng bước một**: mở đầu bằng hình kết quả, rồi mỗi lần chỉ một bước, khối tự làm mẫu đúng bước đó.
   Công thức được nhắc trong bước nào thì hiện ngay ở bước đó. Có thể chuyển sang xem tất cả các bước cùng lúc.
+- **Lời từng bước ngắn gọn**: mỗi bước một câu ngắn nói việc cần làm; lời giải thích chỉ hiện ở bước đang làm.
+  Trên khối luôn có nhãn **Mặt trước / Mặt phải / Mặt trên**; mặt mà bước đang làm nói tới thì nhãn đổi sang màu hồng.
+  Chỗ cần đưa viên tới được khoanh **vòng tròn** ngay trên khối, không phải tả bằng lời ("góc trên bên phải của mặt trước").
 - **Gợi ý 3 mức**: Gợi ý nhẹ (chỉ nói tình huống, khoanh viên cần làm, vẫn tính là tự làm) → Gợi ý → Chỉ từng bước.
 - **Nhắc nhẹ**: ngồi yên 30 giây ở màn Tự làm thì nút Gợi ý nhẹ nhấp nháy kèm lời nhắc; ở vòng 2 màn Làm theo thì nhắc nút "Chỉ cho mình bước này".
 - **Khen sự chăm chỉ**: khối nào giải xong cũng được tính là đã luyện (kể cả khi có gợi ý). Đếm số khối mỗi chặng và tổng cộng, có mốc 3, 5, 10, 20… khối.
