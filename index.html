@@ -1545,7 +1545,7 @@ var Core = (function () {
   }
   function resetSession() {
     clearTimeout(demoTimer); inputQ = []; S.plan = null; S.q = []; S.qi = 0; S.last7 = false; S.hint = 0; S.reveal = false; S.wrong = 0;
-    S.assisted = false; S.soft = false; S.nudge = false; S.gloss = false; S.blockMsg = ''; S.wrongMsg = ''; S.checkMsg = ''; S.moved = false; S.ms = 0; S.msMax = 0; S.progText = ''; S.history = []; S.stray = null; S.done = null; S.demo = null; S.t0 = 0; S.elapsed = 0;
+    S.assisted = false; S.soft = false; S.nudge = false; S.daisy = false; S.gloss = false; S.blockMsg = ''; S.wrongMsg = ''; S.checkMsg = ''; S.moved = false; S.ms = 0; S.msMax = 0; S.progText = ''; S.history = []; S.stray = null; S.done = null; S.demo = null; S.t0 = 0; S.elapsed = 0;
     R.mask = null; R.interactive = true; stopScene(); R.pose(0, 0, true); if (R.look) setLook(false);
   }
   function setCube(c) { S.cube = c; R.setCube(c); }
@@ -1882,7 +1882,13 @@ var Core = (function () {
   }
   function progLine(k) {
     var c = Core.counts(S.cube);
-    if (k === 1) return 'Cánh hoa: ' + c.petals + '/4 · Cạnh trắng về nhà: ' + c.cross + '/4';
+    if (k === 1) {
+      // Cánh hoa thả xuống đáy thì thành cạnh trắng về nhà: không để con thấy số cánh hoa "tụt" như bị mất.
+      // S.daisy: đã đủ bông cúc. Đang xoay dở một cánh hoa xuống đáy (tổng còn 3) thì vẫn tính là đủ.
+      var tot = c.petals + c.cross; if (tot === 4) S.daisy = true; else if (tot < 3) S.daisy = false;
+      if (S.daisy) return c.cross === 0 ? 'Đủ 4 cánh hoa · Cạnh trắng về nhà: 0/4' : 'Cạnh trắng về nhà: ' + c.cross + '/4' + (c.cross < 4 ? ' · Cánh hoa chờ thả: ' + (4 - c.cross) : '');
+      return 'Cánh hoa: ' + c.petals + '/' + (4 - c.cross) + (c.cross ? ' · Cạnh trắng về nhà: ' + c.cross + '/4' : '');
+    }
     if (k === 2) return 'Góc trắng về nhà: ' + c.wc + '/4';
     if (k === 3) return 'Cạnh tầng giữa về nhà: ' + c.me + '/4';
     if (k === 4) return 'Ô cạnh vàng lên trên: ' + c.yu + '/4';
