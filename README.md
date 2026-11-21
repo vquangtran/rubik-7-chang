@@ -15,6 +15,22 @@ rồi vào http://localhost:8000.
 ## Cấu trúc
 
 - `index.html` — toàn bộ ứng dụng (bản gốc từ artifact).
+- `icon-180.png` — biểu tượng khi thêm trang vào Màn hình chính.
+
+## Tên và tiến độ được lưu ở đâu
+
+Chỉ lưu trong bộ nhớ của trình duyệt (`localStorage`) trên từng máy. Không có máy chủ, không cần đăng nhập.
+
+Vì vậy **nơi mở trang** quyết định có giữ được tiến độ hay không:
+
+- **Mở qua link artifact trên claude.ai bằng iPhone / iPad: không giữ được.** Ở đó trang nằm trong một khung (iframe) khác tên miền.
+  Safari (và mọi trình duyệt trên iOS) coi bộ nhớ của khung như vậy là tạm thời và xóa khi trình duyệt đóng.
+  Đổi sang IndexedDB hay cookie cũng không giúp gì, vì cùng chịu một quy tắc.
+- **Mở ở địa chỉ riêng của trang (GitHub Pages): giữ được.** Bật ở Settings → Pages → Deploy from a branch → `main`, thư mục `/ (root)`.
+  Địa chỉ sẽ là `https://<tên tài khoản>.github.io/rubik-7-chang/`.
+- Trên iPhone nên bấm Chia sẻ → **Thêm vào Màn hình chính** rồi luôn mở bằng biểu tượng đó.
+  Safari xóa bộ nhớ của trang nào 7 ngày không được mở; trang đã thêm vào Màn hình chính thì không bị.
+  Biểu tượng trên Màn hình chính có bộ nhớ riêng, không chung với Safari.
 
 ## Cách chơi
 
