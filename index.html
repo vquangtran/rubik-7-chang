@@ -1120,6 +1120,7 @@ var Core = (function () {
     if (!plist.some(function (p) { return p.id === profile.id; })) plist.push({ id: profile.id, name: profile.name });
     plist.forEach(function (p) { if (p.id === profile.id) p.name = profile.name; });
     try { localStorage.setItem(PKEY, JSON.stringify(profile)); localStorage.setItem(PLKEY, JSON.stringify(plist)); } catch (e) { }
+    pushMeta();
   }
   function loadProfile() {
     try { localStorage.setItem('rubik7-test', '1'); lsOK = localStorage.getItem('rubik7-test') === '1'; profile = JSON.parse(localStorage.getItem(PKEY) || 'null'); plist = JSON.parse(localStorage.getItem(PLKEY) || '[]') || []; } catch (e) { }
@@ -1141,13 +1142,16 @@ var Core = (function () {
     switchProfile({ id: rid(), name: '' });
     $('#whoFold').open = true; var i = $('#whoName'); if (i) i.focus();
   }
-  function renameProfile(name) { profile.name = name; prog.name = name; savePlist(); save(); renderHome(); }
+  function renameProfile(name) {
+    profile.name = name; prog.name = name; savePlist(); save(); renderHome();
+    toastHome(!name ? 'Đã xóa tên' : (cloudRef || lsOK) ? 'Đã lưu tên ' + name : 'Máy này không giữ được tên khi đóng trang');
+  }
   var cloudRef = null, cloudBusy = false, cloudDirty = false, cloudTimer = null;
   function save() {
     prog.t = Date.now();
     prog.name = profile.name;
     try { localStorage.setItem(pkey(), JSON.stringify(prog)); } catch (e) { }
-    if (cloudRef) { cloudDirty = true; clearTimeout(cloudTimer); cloudTimer = setTimeout(pushCloud, 1200); }
+    if (cloudRef) { cloudDirty = true; clearTimeout(cloudTimer); cloudTimer = setTimeout(pushCloud, 500); }
   }
   // gộp tiến độ của hai máy: giữ phần đã đạt được ở cả hai bên
   function mergeProg(a, b) {
@@ -1182,13 +1186,14 @@ var Core = (function () {
   }
   // mỗi người học một bản lưu riêng trong tài khoản; máy khác chỉ thấy khi chọn đúng người học đó
   function bindCloud() {
-    cloudRef = null; if (!cloudDb || !lsOK) return;
+    cloudRef = null; if (!cloudDb) return;
     var pid = profile.id, ref = cloudDb.doc('data/users/' + cloudUid + '/p_' + pid);
     ref.get().then(function (snap) {
       if (profile.id !== pid) return;
       if (snap.exists) takeRemote(snap.data());
       cloudRef = ref;
       if (prog.t) { cloudDirty = true; pushCloud(); }
+      if (S.view === 'home') renderHome();
     }).catch(function () { });
   }
   function listCloud() {
@@ -1196,14 +1201,62 @@ var Core = (function () {
     cloudDb.collection('data/users/' + cloudUid).get().then(function (q) {
       q.docs.forEach(function (d) {
         if (d.id.indexOf('p_') !== 0) return;
-        var id = d.id.slice(2), nm = String((d.data() || {}).name || '').slice(0, 24), e = plist.filter(function (p) { return p.id === id; })[0];
+        var dd = d.data() || {}, id = d.id.slice(2), nm = String(dd.name || '').slice(0, 24), e = plist.filter(function (p) { return p.id === id; })[0];
+        // bản lưu không tên và chưa qua chặng nào: bỏ qua, khỏi hiện nút "Chưa đặt tên" thừa
+        if (!e && !nm && !Object.keys(dd.st || {}).some(function (k) { return dd.st[k] && dd.st[k].passed; })) return;
         if (e) { if (nm && id !== profile.id) e.name = nm; } else plist.push({ id: id, name: nm });
       });
       savePlist(); if (S.view === 'home') renderHome();
     }).catch(function () { });
   }
-  // Tiến độ chỉ lưu trên từng máy. Trang không dùng dữ liệu tài khoản, nên người xem không bị hỏi đăng nhập.
-  function initCloud() { }
+  // Lưu vào tài khoản Claude của người đang xem (phần riêng của từng người, người khác không đọc được).
+  // Trên iPad, bộ nhớ của trang có thể bị xóa khi đóng ứng dụng, nên tiến độ và danh sách người học được lưu cả ở đây.
+  // Không đăng nhập thì chỉ lưu trên máy như trước, không hỏi gì thêm.
+  var metaReady = false, metaBusy = false, metaWant = false, metaLast = '';
+  function metaRef() { return cloudDb.doc('data/users/' + cloudUid + '/meta'); }
+  function pushMeta() {
+    if (!cloudDb || !metaReady || metaBusy) { metaWant = true; return; }
+    metaWant = false;
+    var body = JSON.stringify({ cur: profile.id, list: plist.map(function (p) { return { id: p.id, name: p.name || '' }; }) });
+    if (body === metaLast) return;
+    metaBusy = true;
+    metaRef().set(JSON.parse(body)).then(function () { metaLast = body; }, function () { }).then(function () { metaBusy = false; if (metaWant) pushMeta(); });
+  }
+  function emptyHere() { return !prog.t && !profile.name; }
+  function initCloud() {
+    var c = window.claude;
+    if (!c || typeof c.use !== 'function') return;
+    Promise.all([c.use('db'), c.use('user')]).then(function (r) {
+      var db = r[0], user = r[1];
+      if (!db || !user) return;
+      return Promise.resolve(user.can ? user.can('data.write') : null).then(function (w) {
+        if (w === false) return;
+        return user.id().then(function (id) {
+          if (!id) return;
+          cloudDb = db; cloudUid = String(id);
+          return metaRef().get().then(function (snap) {
+            var m = snap.exists ? snap.data() || {} : {}, list = Array.isArray(m.list) ? m.list : [];
+            list.forEach(function (q) {
+              if (!q || typeof q.id !== 'string') return;
+              var nm = String(q.name || '').slice(0, 24), e = plist.filter(function (p) { return p.id === q.id; })[0];
+              if (e) { if (nm && !e.name) e.name = nm; } else plist.push({ id: q.id, name: nm });
+            });
+            metaReady = true;
+            var cur = typeof m.cur === 'string' && m.cur !== profile.id ? plist.filter(function (p) { return p.id === m.cur; })[0] : null;
+            if (cur && emptyHere()) {
+              // máy này mới mở hoặc đã bị xóa bộ nhớ: lấy lại người học đang học dở từ tài khoản
+              var gone = profile.id;
+              plist = plist.filter(function (p) { return p.id !== gone; });
+              switchProfile(cur);
+            } else { savePlist(); bindCloud(); }
+            listCloud();
+          });
+        });
+      });
+    }).catch(function () { });
+    // đóng trang hay chuyển ứng dụng: gửi ngay phần chưa lưu
+    document.addEventListener('visibilitychange', function () { if (document.hidden && cloudDirty) { clearTimeout(cloudTimer); pushCloud(); } });
+  }
   // ---- khối đang làm dở: lưu lại để đổi thẻ, tải lại trang hay trang được cập nhật cũng không mất ----
   var RKEY = 'rubik7-resume-v1', RES_ = {}, LAST = null, resumeTimer = null;
   function rk() { return RKEY + ':' + profile.id; }
@@ -2216,7 +2269,7 @@ var Core = (function () {
     c.appendChild(stageChips());
     c.appendChild(el('p', 'gprog', progLine(Math.min(7, S.ms + 1))));
     if (S.checkMsg) c.appendChild(el('p', 'check', S.checkMsg));
-    if ((S.kind === 'test' || S.kind === 'review') && S.assisted) c.appendChild(el('p', 'note', 'Khối này có gợi ý giúp. Con cứ làm cho xong.'));
+    if ((S.kind === 'test' || S.kind === 'review') && S.assisted) c.appendChild(el('p', 'note', S.kind === 'test' && !stg(S.goal).passed ? 'Khối này có Gợi ý giúp nên chưa tính qua chặng. Con cứ làm cho xong.' : 'Khối này có gợi ý giúp. Con cứ làm cho xong.'));
     else if (S.soft && (S.kind === 'test' || S.kind === 'review')) c.appendChild(el('p', 'note', 'Gợi ý nhẹ vẫn tính là tự làm.'));
     if (S.soft && S.hint === 0 && S.plan && !S.stray) {
       var sb = el('div', 'soft'); sb.appendChild(el('p', 'sub', 'Gợi ý nhẹ'));
@@ -2295,7 +2348,7 @@ var Core = (function () {
         else add(praise(), d.streak >= 3 ? 'Con thành thạo chặng này rồi 🏅.' : 'Tự giải thêm ' + (3 - d.streak) + ' khối nữa là được huy hiệu Thành thạo 🏅.');
         row.appendChild(btn('Khối tiếp theo', 'primary', again)); row.appendChild(nextBtn(''));
       } else {
-        add('Xong rồi. ' + praise(), stg(k).passed ? 'Khối sau con thử chỉ dùng Gợi ý nhẹ.' : 'Con giải xong rồi, có gợi ý giúp. Khối sau con thử chỉ dùng Gợi ý nhẹ.');
+        add('Xong rồi. ' + praise(), stg(k).passed ? 'Khối sau con thử chỉ dùng Gợi ý nhẹ.' : 'Khối này có Gợi ý giúp nên chưa tính qua chặng. Khối sau con chỉ dùng Gợi ý nhẹ là qua chặng.');
         row.appendChild(btn('Thử khối khác', 'primary', again)); if (stg(k).passed) row.appendChild(nextBtn(''));
       }
     } else if (d.type === 'exam') {
@@ -2367,7 +2420,7 @@ var Core = (function () {
     var sv = btn('Lưu tên', '', function () { renameProfile(inp.value.trim().slice(0, 24)); });
     inp.addEventListener('keydown', function (ev) { if (ev.key === 'Enter') { ev.preventDefault(); sv.click(); } });
     wr.appendChild(inp); wr.appendChild(sv); who.appendChild(wr);
-    who.appendChild(el('p', 'tip', 'Mỗi người học có tiến độ riêng.'));
+    who.appendChild(el('p', 'tip', 'Mỗi người học có tiến độ riêng. ' + (cloudRef ? 'Tiến độ được lưu vào tài khoản Claude.' : lsOK ? 'Tiến độ chỉ lưu trên máy này. Mở trang khi đã đăng nhập Claude để không bị mất.' : 'Máy này không giữ được tiến độ khi đóng trang. Hãy mở trang khi đã đăng nhập Claude.')));
     var others = plist.filter(function (p) { return p.id !== profile.id; });
     if (others.length) {
       who.appendChild(el('p', 'sub', 'Đổi sang người học khác'));
