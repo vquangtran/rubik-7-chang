@@ -12,9 +12,27 @@ python3 -m http.server 8000
 
 rồi vào http://localhost:8000.
 
+## Dùng trên iPad không đăng nhập Claude
+
+Mở trong Claude mà chưa đăng nhập thì iPad có thể xóa tên và tiến độ khi đóng ứng dụng.
+Cách giữ tiến độ lâu dài: mở trang qua GitHub Pages rồi thêm vào Màn hình chính.
+
+1. Trên GitHub: Settings → Pages → Source "Deploy from a branch" → chọn nhánh có bản mới nhất, thư mục `/ (root)` → Save.
+   Trang sẽ ở `https://vquangtran.github.io/rubik-7-chang/`.
+2. Trên iPad, mở địa chỉ đó bằng Safari → nút Chia sẻ → **Thêm vào MH chính**.
+3. Con mở trò chơi từ biểu tượng trên Màn hình chính (không mở qua Safari hay Claude), vì mỗi nơi giữ tiến độ riêng.
+
+## Lưu tiến độ
+
+- Luôn lưu trên máy (localStorage), theo từng người học.
+- Mở trong Claude khi đã đăng nhập: lưu thêm vào phần riêng của người xem trong tài khoản (`db` + `user`),
+  gồm danh sách người học (`data/users/<id>/meta`) và tiến độ từng người (`data/users/<id>/p_<người học>`).
+  Máy bị xóa bộ nhớ thì lấy lại người học đang học dở từ tài khoản.
+
 ## Cấu trúc
 
 - `index.html` — toàn bộ ứng dụng (bản gốc từ artifact).
+- `icon.png` — biểu tượng khi thêm vào Màn hình chính.
 
 ## Cách chơi
 

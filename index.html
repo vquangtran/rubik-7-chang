@@ -4,6 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Rubik 7 Chặng</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Rubik 7 Chặng">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="apple-touch-icon" href="icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Be+Vietnam+Pro:wght@400;500;600&display=swap" rel="stylesheet">
@@ -2420,7 +2425,7 @@ var Core = (function () {
     var sv = btn('Lưu tên', '', function () { renameProfile(inp.value.trim().slice(0, 24)); });
     inp.addEventListener('keydown', function (ev) { if (ev.key === 'Enter') { ev.preventDefault(); sv.click(); } });
     wr.appendChild(inp); wr.appendChild(sv); who.appendChild(wr);
-    who.appendChild(el('p', 'tip', 'Mỗi người học có tiến độ riêng. ' + (cloudRef ? 'Tiến độ được lưu vào tài khoản Claude.' : lsOK ? 'Tiến độ chỉ lưu trên máy này. Mở trang khi đã đăng nhập Claude để không bị mất.' : 'Máy này không giữ được tiến độ khi đóng trang. Hãy mở trang khi đã đăng nhập Claude.')));
+    who.appendChild(el('p', 'tip', 'Mỗi người học có tiến độ riêng. ' + (cloudRef ? 'Tiến độ được lưu vào tài khoản Claude.' : !lsOK ? 'Máy này không giữ được tiến độ khi đóng trang.' : window.claude ? 'Tiến độ chỉ lưu trên máy này và có thể mất khi đóng ứng dụng.' : 'Tiến độ lưu trên máy này.')));
     var others = plist.filter(function (p) { return p.id !== profile.id; });
     if (others.length) {
       who.appendChild(el('p', 'sub', 'Đổi sang người học khác'));
@@ -2491,6 +2496,7 @@ var Core = (function () {
     vb.addEventListener('click', function () { var on = Voice.toggle(); voiceUI(); toast(on ? 'Máy sẽ đọc to cho con nghe' : 'Đã tắt giọng đọc'); if (on) { var t = $('#coach .bt'); if (t) Voice.say(t.textContent, true); } });
     $('#look').addEventListener('click', function () { setLook(!R.look); if (R.look) toast('Kéo ngón tay trên khối để nhìn mọi phía', 2600); });
     loadProfile(); loadLocal(); loadResume(); renderHome(); initCloud();
+    try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(function () { }); } catch (e) { }
     function boot(data) {
       if (data && data.r) { RES_ = data.r; if (data.last) LAST = data.last; }
       var L = LAST;
